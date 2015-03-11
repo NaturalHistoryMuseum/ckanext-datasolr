@@ -25,14 +25,20 @@ class Solr(object):
     @param id_field: The id field to return. Defaults '_id'
     @param query_type: Type of query to run when the query is provided as an
         array. Defaults to 'AND'.
+    @param result_formatter: Optional callback to format the SOLR results.
+        The callback is invoked with two parameters: the name of the id field
+        and a list of objects of the type {id_field: value}. If not provided
+        results are formatted as a list of ids.
     """
-    def __init__(self, search_url, id_field='_id', query_type='AND'):
+    def __init__(self, search_url, id_field='_id', query_type='AND',
+                 result_formatter=None):
         url = urlparse(search_url)
         self.search_url = urlunparse((
             url.scheme, url.netloc, url.path, url.params, '', ''
         ))
         self.id_field = id_field
         self.query_type = ' ' + query_type.strip() + ' '
+        self.result_formatter = result_formatter
 
     def search(self, **query):
         """ Perform a search and return the results
@@ -61,7 +67,8 @@ class Solr(object):
           joined with the defined query type operator ('AND' or 'OR')
           before the replacement are inserted.
 
-        @returns: (number of results, [list of id field]) tuple
+        @returns: (number of results, formatted result) tuple. By default
+            the formatted result is a list of ids.
         """
         query['wt'] = 'json'
         query['fl'] = self.id_field
@@ -73,11 +80,15 @@ class Solr(object):
         resp = urllib2.urlopen(self.search_url + '?' + urllib.urlencode(query))
         data = json.loads(resp.read())
         resp.close()
-        # Despite having to unpack the data in this way, tests have shown this
-        # to be faster (when combined with the ujson parser) than alternative
-        # solr return formats.
         result_count = data['response']['numFound']
-        result_list = [r[self.id_field] for r in data['response']['docs']]
+        if not self.result_formatter:
+            # Despite having to unpack the data in this way, tests have shown this
+            # to be faster (when combined with the ujson parser) than alternative
+            # solr return formats.
+            result_list = [r[self.id_field] for r in data['response']['docs']]
+        else:
+            result_list = self.result_formatter(self.id_field,
+                                                data['response']['docs'])
         return result_count, result_list
 
     def escape(self, q):

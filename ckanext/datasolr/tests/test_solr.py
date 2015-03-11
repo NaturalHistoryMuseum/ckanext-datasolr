@@ -18,8 +18,12 @@ class TestSolr():
             'http://custom_domain/path/custom_rq',
             body=json.dumps({
                 'response': {
-                    'numFound': 0,
-                    'docs': []
+                    'numFound': 3,
+                    'docs': [
+                        {'custom_id': '-a-'},
+                        {'custom_id': '~b~'},
+                        {'custom_id': '*c*'}
+                    ]
                 }
             })
         )
@@ -72,3 +76,28 @@ class TestSolr():
             ''.join(['\\' + c for c in chars]),
             self.solr.escape(chars)
         )
+
+    def test_returned_row_count(self):
+        """ Ensure the returned row count is the one provided by SOLR """
+        r = self.solr.search(q='*:*')
+        assert_equals(3, r[0])
+
+    def test_returned_rows(self):
+        """ Ensure the returned rows are the ones returned by solr, using the
+            default formatting. """
+        r = self.solr.search(q='*:*')
+        assert_equals(['-a-', '~b~', '*c*'], r[1])
+
+
+    def test_custom_result_formatter(self):
+        """ Test we can use a custom result formatter """
+        def format_to_string(id, rows):
+            return ','.join(r[id] for r in rows)
+        solr = Solr(
+            search_url='http://custom_domain/path/custom_rq',
+            id_field='custom_id',
+            query_type='CUSTOM_OP',
+            result_formatter=format_to_string
+        )
+        r = solr.search(q='*:*')
+        assert_equals('-a-,~b~,*c*', r[1])
