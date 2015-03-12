@@ -86,10 +86,10 @@ class SolrFetcher(object):
                 solr_query.append(field + ':{}')
                 solr_values.append(filters[field])
         if isinstance(q, basestring):
-            for word in q.split(' '):
-                if word:
-                    solr_query.append('_fulltext:{}')
-                    solr_values.append(word)
+            words = (w for w in q.split(' ') if w)
+            for word in words:
+                solr_query.append('_fulltext:{}')
+                solr_values.append(word)
         elif q:
             for field in q:
                 solr_query.append(field + ':*{}*')
