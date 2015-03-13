@@ -1,17 +1,5 @@
-import json
-from nose.tools import assert_true, assert_equals
-from ckanext.datasolr.lib.solrfetch import SolrFetcher
-
-
-class MockCnx(object):
-    def __init__(self):
-        self.sql = None
-        self.values = None
-
-    def execute(self, sql, values):
-        self.sql = sql
-        self.values = values
-        return 'MockCnx::execute'
+from nose.tools import assert_equals
+from ckanext.datasolr.lib.solrqueryapi import SolrQueryApi, SolrQueryApiSql
 
 
 class MockSolr(object):
@@ -40,32 +28,29 @@ class MockSolr(object):
         return self.result_row_count, rows
 
 
-class TestSolrFetch(object):
+class TestSolrQueryApi(object):
     def setUp(self):
         search_url='http://example.com/solr/select'
         solr_id_field='custom_id'
-        self.cnx = MockCnx()
-        self.solrfetcher = SolrFetcher(
-            connection=self.cnx,
+        self.solr_query_api = SolrQueryApi(
             search_url=search_url,
             solr_id_field=solr_id_field,
-            id_field='other_id'
         )
-        self.solrfetcher.solr = MockSolr(
+        self.solr_query_api.solr = MockSolr(
             search_url, solr_id_field, 'AND',
-            self.solrfetcher.solr.result_formatter
+            self.solr_query_api.solr.result_formatter
         )
 
     def test_field_translated_into_solr_query(self):
         """ Ensure that the field query provided is translated correctly """
-        self.solrfetcher.fetch(
+        self.solr_query_api.fetch(
             resource_id='aaabbbccc',
             filters={
                 'field1': 'value1',
                 'field2': 'value2'
             }
         )
-        sa = self.solrfetcher.solr.search_args['q']
+        sa = self.solr_query_api.solr.search_args['q']
         assert_equals(set(sa[0]), set(['field2:{}', 'field1:{}']))
         if sa[0][0] == 'field1:{}':
             assert_equals(sa[1], ['value1', 'value2'])
@@ -74,24 +59,24 @@ class TestSolrFetch(object):
 
     def test_fts_translated_into_solr_query(self):
         """ Ensure that full text query provided is translated correctly """
-        self.solrfetcher.fetch(
+        self.solr_query_api.fetch(
             resource_id='aaabbbccc',
             q='the little brown fox'
         )
-        sa = self.solrfetcher.solr.search_args['q']
+        sa = self.solr_query_api.solr.search_args['q']
         assert_equals(sa[0], ['_fulltext:{}']*4)
         assert_equals(set(sa[1]), set(['the', 'little', 'brown', 'fox']))
 
     def test_field_fts_translated_into_solr_query(self):
         """ Ensure that the field full text query provided is translated correctly """
-        self.solrfetcher.fetch(
+        self.solr_query_api.fetch(
             resource_id='aaabbbccc',
             q={
                 'field1': 'value1',
                 'field2': 'value2'
             }
         )
-        sa = self.solrfetcher.solr.search_args['q']
+        sa = self.solr_query_api.solr.search_args['q']
         assert_equals(set(sa[0]), set(['field2:*{}*', 'field1:*{}*']))
         if sa[0][0] == 'field1:*{}*':
             assert_equals(sa[1], ['value1', 'value2'])
@@ -100,33 +85,69 @@ class TestSolrFetch(object):
 
     def test_filters_can_be_none(self):
         """ Ensure that q/filters can be none """
-        self.solrfetcher.fetch(resource_id='aaabbbccc')
+        self.solr_query_api.fetch(resource_id='aaabbbccc')
 
     def test_combined_filters(self):
         """ Ensure that providing field and full text query works """
-        self.solrfetcher.fetch(
+        self.solr_query_api.fetch(
             resource_id='aaabbbccc',
             filters={'field1':'value1'},
             q='hello world'
         )
-        sa = self.solrfetcher.solr.search_args['q']
+        sa = self.solr_query_api.solr.search_args['q']
         assert_equals(set(sa[0]), set(['field1:{}'] + ['_fulltext:{}']*2))
         assert_equals(set(sa[1]), set(['value1', 'hello', 'world']))
 
-    def test_query_is_executed(self):
-        """ Ensure the query is executed """
-        r = self.solrfetcher.fetch(resource_id='aabbcc', q='hello')
-        assert_equals((3, 'MockCnx::execute'), r)
+    def test_returned_data(self):
+        """ Test the returned data is as expected """
+        results = self.solr_query_api.fetch(resource_id='aabbcc', q='hello')
+        assert_equals(results, (3, ['a', 'b', 'c']))
 
-    def test_query_sql(self):
+
+class TestSolrQueryApiSql(object):
+    def setUp(self):
+        search_url='http://example.com/solr/select'
+        solr_id_field='custom_id'
+        self.solr_query_api_sql = SolrQueryApiSql(
+            search_url=search_url,
+            solr_id_field=solr_id_field,
+            id_field='other_id'
+        )
+        self.solr_query_api_sql.solr = MockSolr(
+            search_url, solr_id_field, 'AND',
+            self.solr_query_api_sql.solr.result_formatter
+        )
+
+    def test_query_sql_with_all_fields(self):
         """ Ensure the generated SQL fetches the rows as exepected """
-        self.solrfetcher.fetch(resource_id='aabbcc', q='hello')
-        assert_equals(
-            self.cnx.sql.replace(' ', '').replace("\n", ''),
-            'SELECT*FROM"aabbcc"WHEREother_id=ANY(VALUES(%s)(%s)(%s))'
+        result = self.solr_query_api_sql.fetch(resource_id='aabbcc', q='hello')
+        assert_equals(result[1].replace(' ', '').replace("\n", ''),
+            'SELECT*FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
+        )
+
+    def test_query_sql_with_selected_fields(self):
+        """ Ensure the generated SQL fetches the rows as exepected """
+        result = self.solr_query_api_sql.fetch(
+            resource_id='aabbcc',
+            q='hello',
+            fields=['some_field', 'another_field']
+        )
+        assert_equals(result[1].replace(' ', '').replace("\n", ''),
+            'SELECT"some_field","another_field"FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
+        )
+
+    def test_query_sql_removes_field_double_quote(self):
+        """ Ensure the generated SQL doesn't have double quotes in column names """
+        result = self.solr_query_api_sql.fetch(
+            resource_id='aabbcc',
+            q='hello',
+            fields=['some_"field', 'ano"t"her_field']
+        )
+        assert_equals(result[1].replace(' ', '').replace("\n", ''),
+            'SELECT"some_field","another_field"FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
         )
 
     def test_query_sql_values(self):
         """ Ensure the values for the generated SQL are correct """
-        self.solrfetcher.fetch(resource_id='aabbcc', q='hello')
-        assert_equals(set(self.cnx.values), set(['a', 'b', 'c']))
+        result = self.solr_query_api_sql.fetch(resource_id='aabbcc', q='hello')
+        assert_equals(set(result[2]), set(['a', 'b', 'c']))
