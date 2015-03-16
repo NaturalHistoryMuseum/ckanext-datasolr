@@ -3,7 +3,6 @@ import ckanext.datastore.helpers as datastore_helpers
 import ckanext.datastore.logic.schema as dsschema
 
 from ckan.lib.navl.dictization_functions import validate
-from ckanext.datasolr.config import config
 from ckanext.datasolr.lib.solrqueryapi import SolrQueryApiSql
 
 
@@ -12,13 +11,15 @@ class DatastoreSolrSearch(object):
 
     @param context: Ckan execution context
     @param params: Dictionary containing the action parameters
+    @param config: Datasolr configuration for this resource
     @param connection: Database connection object
         (ckanext.datasolr.lib.db.Connection)
     @raises ValidationError: If the request parameters are invalid
     @raises ObjectNotFound: If the resource is not found
     """
-    def __init__(self, context, params, connection):
+    def __init__(self, context, params, config, connection):
         self.context = context
+        self.config = config
         self.connection = connection
         schema = self.context.get('schema', dsschema.datastore_search_schema())
         self.params, errors = validate(params, schema, self.context)
@@ -55,10 +56,10 @@ class DatastoreSolrSearch(object):
         """
         self._check_access()
         fetcher = SolrQueryApiSql(
-            search_url=config[self.resource_id]['search_url'],
-            id_field=config[self.resource_id]['id_field'],
-            solr_id_field=config[self.resource_id]['solr_id_field'],
-            solr_resource_id_field=config[self.resource_id]['solr_resource_id_field']
+            search_url=self.config['search_url'],
+            id_field=self.config['id_field'],
+            solr_id_field=self.config['solr_id_field'],
+            solr_resource_id_field=self.config['solr_resource_id_field']
         )
         fetch_params = ['resource_id', 'filters', 'q', 'limit', 'offset', 'sort', 'fields']
         params = {k: self.params[k] for k in fetch_params  if k in self.params}
