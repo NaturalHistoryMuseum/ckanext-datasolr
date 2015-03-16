@@ -1,5 +1,5 @@
 from ckanext.datasolr.lib.datastore_solr_search import DatastoreSolrSearch
-from nose.tools import assert_equals
+from nose.tools import assert_equals, assert_in
 from mock import Mock, patch
 from threading import current_thread
 
@@ -108,7 +108,13 @@ class TestDatastoreSolrSearch(object):
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
         result = search.fetch()
-        assert_equals({'field1': 'type1', 'field2': 'type2'}, result['fields'])
+        expected = [
+            {'id': 'field1', 'type': 'type1'},
+            {'id': 'field2', 'type': 'type2'}
+        ]
+        assert_equals(len(expected), len(result['fields']))
+        for fd in result['fields']:
+            assert_in(fd, expected)
 
     def test_table_alias_is_applied(self):
         """ Ensure that the table alias is applied """
@@ -118,3 +124,14 @@ class TestDatastoreSolrSearch(object):
         search.fetch()
         solr = _mock_solr[current_thread().ident]
         assert_equals('some_resource', solr.query['resource_id'])
+
+    def test_params_are_repeated_in_response(self):
+        search = DatastoreSolrSearch(
+            {},
+            {'resource_id': 'some_resource', 'q': 'word'},
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        result = search.fetch()
+        assert_equals(result['q'], 'word')
+        assert_equals(result['resource_id'], 'some_resource')

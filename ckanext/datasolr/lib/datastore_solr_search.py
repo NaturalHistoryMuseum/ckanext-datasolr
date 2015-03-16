@@ -67,11 +67,14 @@ class DatastoreSolrSearch(object):
         records = self.connection.execute(
             sql, replacements, row_formatter=self._format_row
         )
-        return {
-            'fields': self.fields,
+        # TODO: should we cache this?
+        api_field_list = [{'id': f, 'type': self.fields[f]} for f in self.fields]
+        return dict(params.items() + {
+            'fields': api_field_list,
             'total': total,
-            'records': records
-        }
+            'records': records,
+            '_backend': 'datasolr'
+         }.items())
 
     def _format_row(self, row):
         """ Format a row of results
