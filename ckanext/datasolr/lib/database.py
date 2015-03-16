@@ -49,10 +49,11 @@ class Connection(object):
             FROM   "_table_metadata"
             WHERE name = %s
         """, (table,))
-        if len(results) == 0:
+        row = results.first()
+        if row is None:
             raise ValueError()
-        if results[0]['alias_of']:
-            return results[0]['alias_of']
+        if row['alias_of']:
+            return row['alias_of']
         else:
             return table
 
