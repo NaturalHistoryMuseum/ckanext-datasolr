@@ -19,7 +19,9 @@ class DataSolrPlugin(p.SingletonPlugin):
             setting = r.group(2)
             value = ckan_config[name]
             if resource_id not in config:
-                config[resource_id] = {}
+                config[resource_id] = {
+                    'solr_resource_id_field': None
+                }
             config[resource_id][setting] = value
 
     # IActions
