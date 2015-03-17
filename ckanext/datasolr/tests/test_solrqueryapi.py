@@ -57,6 +57,18 @@ class TestSolrQueryApi(object):
         else:
             assert_equals(sa[1], ['value2', 'value1'])
 
+    def test_field_multiple_values_translated_into_disjoint_solr_query(self):
+        """ Ensure that field query with multiple values is translated correctly """
+        self.solr_query_api.fetch(
+            resource_id='aaabbbccc',
+            filters={
+                'field1': ['value1', 'value2']
+            }
+        )
+        sa = self.solr_query_api.solr.search_args['q']
+        assert_equals(sa[0], ['(field1:{} OR field1:{})'])
+        assert_equals(sa[1], ['value1', 'value2'])
+
     def test_fts_translated_into_solr_query(self):
         """ Ensure that full text query provided is translated correctly """
         self.solr_query_api.fetch(

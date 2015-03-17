@@ -68,8 +68,15 @@ class SolrQueryApi(object):
         solr_values = []
         if filters:
             for field in filters:
-                solr_query.append(field + ':{}')
-                solr_values.append(filters[field])
+                if isinstance(filters[field], basestring):
+                    solr_query.append(field + ':{}')
+                    solr_values.append(filters[field])
+                else:
+                    field_query = []
+                    for field_value in filters[field]:
+                        field_query.append(field + ':{}')
+                        solr_values.append(field_value)
+                    solr_query.append('(' + ' OR '.join(field_query) + ')')
         if isinstance(q, basestring):
             words = (w for w in q.split(' ') if w)
             for word in words:
