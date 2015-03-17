@@ -50,6 +50,8 @@ class SolrQueryApi(object):
             solr_values.append(resource_id)
         if sort is None:
             sort = '{} ASC'.format(self.solr.id_field)
+        elif not re.search('\s(ASC|DESC)\s*$', sort, re.IGNORECASE):
+            sort = sort + ' ASC'
         if distinct is not None:
             solr_args['group'] = 'true'
             solr_args['group.field'] = distinct

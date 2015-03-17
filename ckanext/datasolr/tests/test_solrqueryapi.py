@@ -124,6 +124,20 @@ class TestSolrQueryApi(object):
         assert_equals(sa['group.main'], 'true')
         assert_equals(sa['group.field'], 'distinctfield')
 
+    def test_sort_is_applied(self):
+        """ Ensure the sort is sent to SOLR """
+        results = self.solr_query_api.fetch(resource_id='aabbcc',
+                                            sort='field1 DESC')
+        sa = self.solr_query_api.solr.search_args
+        assert_equals(sa['sort'], 'field1 DESC')
+
+    def test_sort_is_set_to_asc_by_default(self):
+        """ Ensure the sort is set to ASC by default """
+        results = self.solr_query_api.fetch(resource_id='aabbcc',
+                                            sort='field1')
+        sa = self.solr_query_api.solr.search_args
+        assert_equals(sa['sort'], 'field1 ASC')
+
 class TestSolrQueryApiSql(object):
     def setUp(self):
         search_url='http://example.com/solr/select'
