@@ -61,7 +61,8 @@ class DatastoreSolrSearch(object):
             solr_id_field=self.config['solr_id_field'],
             solr_resource_id_field=self.config['solr_resource_id_field']
         )
-        fetch_params = ['resource_id', 'filters', 'q', 'limit', 'offset', 'sort', 'fields']
+        fetch_params = ['resource_id', 'filters', 'q', 'limit', 'offset',
+                        'sort', 'fields', 'distinct']
         params = {k: self.params[k] for k in fetch_params  if k in self.params}
         (total, sql, replacements) = fetcher.fetch(**params)
         records = self.connection.execute(

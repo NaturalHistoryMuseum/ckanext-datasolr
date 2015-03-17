@@ -1,4 +1,4 @@
-from nose.tools import assert_equals
+from nose.tools import assert_equals, assert_raises, assert_not_in
 from ckanext.datasolr.lib.solrqueryapi import SolrQueryApi, SolrQueryApiSql
 
 
@@ -115,6 +115,14 @@ class TestSolrQueryApi(object):
         results = self.solr_query_api.fetch(resource_id='aabbcc', q='hello')
         assert_equals(results, (3, ['a', 'b', 'c']))
 
+    def test_distinct_field_is_sent_as_group(self):
+        """ Ensure that distinct field is sent to solr as group query """
+        results = self.solr_query_api.fetch(resource_id='aabbcc',
+                                            distinct='distinctfield')
+        sa = self.solr_query_api.solr.search_args
+        assert_equals(sa['group'], 'true')
+        assert_equals(sa['group.main'], 'true')
+        assert_equals(sa['group.field'], 'distinctfield')
 
 class TestSolrQueryApiSql(object):
     def setUp(self):
@@ -163,3 +171,26 @@ class TestSolrQueryApiSql(object):
         """ Ensure the values for the generated SQL are correct """
         result = self.solr_query_api_sql.fetch(resource_id='aabbcc', q='hello')
         assert_equals(set(result[2]), set(['a', 'b', 'c']))
+
+    def test_distinct_applies_distinct_field(self):
+        """ Ensure that a distinct query applies the group fields """
+        result = self.solr_query_api_sql.fetch(resource_id='aabbcc',
+                                               fields=['field1'],
+                                               distinct=True)
+        sa = self.solr_query_api_sql.solr.search_args
+        assert_equals(sa['group'], 'true')
+        assert_equals(sa['group.main'], 'true')
+        assert_equals(sa['group.field'], 'field1')
+
+    def test_multiple_distinct_fields_raise(self):
+        """ Test that attempting to define multiple distinct fields raises """
+        assert_raises(ValueError, self.solr_query_api_sql.fetch,
+                      resource_id='a', fields=['f1', 'f2'],
+                      distinct=True)
+
+    def test_distinct_with_no_defined_field_does_nothing(self):
+        """ Ensure that selecting 'distinct' with no fields does nothing """
+        result = self.solr_query_api_sql.fetch(resource_id='aabbcc',
+                                               distinct=True)
+        sa = self.solr_query_api_sql.solr.search_args
+        assert_not_in('group', sa)

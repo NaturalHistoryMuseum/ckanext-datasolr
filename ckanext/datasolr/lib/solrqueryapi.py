@@ -26,7 +26,7 @@ class SolrQueryApi(object):
                          result_formatter=self._solr_formatter)
 
     def fetch(self, resource_id, filters=None, q=None, limit=100, offset=0,
-              sort=None):
+              sort=None, distinct=None):
         """ Perform a query and fetch results.
 
         @param resource_id: The resource id to match from. Note that is sent
@@ -38,23 +38,30 @@ class SolrQueryApi(object):
         @param limit: Number of rows to fetch. Defaults to 100.
         @param offset: Offset to fetch from. Defaults to 0.
         @param sort: SORT statement (eg. fieldName ASC)
-
+        @param distinct: If not None, field on which to group the result
+            (returning only one row per value of the field)
         @returns: A tuple (total number of records, [list of ids])
         """
         # Prepare query
+        solr_args = {}
         solr_query, solr_values = self._datastore_query_to_solr(filters, q)
         if self.solr_resource_id_field is not None:
             solr_query.append(self.solr_resource_id_field + ':{}')
             solr_values.append(resource_id)
         if sort is None:
             sort = '{} ASC'.format(self.solr.id_field)
+        if distinct is not None:
+            solr_args['group'] = 'true'
+            solr_args['group.field'] = distinct
+            solr_args['group.main'] = 'true'
+        solr_args = dict({
+            'q': (solr_query, solr_values),
+            'start': offset,
+            'rows': limit,
+            'sort': sort
+        }.items() + solr_args.items())
         # Fetch ids from SOLR
-        return self.solr.search(
-            q=(solr_query, solr_values),
-            start=offset,
-            rows=limit,
-            sort=sort
-        )
+        return self.solr.search(**solr_args)
 
     def _datastore_query_to_solr(self, filters, q):
         """ Transform datastore query parameters into solr query parameters
@@ -126,7 +133,7 @@ class SolrQueryApiSql(SolrQueryApi):
         self.id_field = id_field
 
     def fetch(self, resource_id, filters=None, q=None, limit=100, offset=0,
-              sort=None, fields=None):
+              sort=None, distinct=False, fields=None):
         """ Perform a query, fetch the ids and return an SQL query to fetch
         the data.
 
@@ -140,6 +147,9 @@ class SolrQueryApiSql(SolrQueryApi):
         @param limit: Number of rows to fetch. Defaults to 100.
         @param offset: Offset to fetch from. Defaults to 0.
         @param sort: SORT statement (eg. fieldName ASC)
+        @param distinct: Whether this should be a distinct query or not.
+            Distinct queries only work with a single field, an exception
+            will be raised if more than one field is being queries;
         @param fields: List of fields to fetch. If None, then '*' is used.
             Double quotes will be stripped out of all field names.
 
@@ -152,8 +162,15 @@ class SolrQueryApiSql(SolrQueryApi):
                 '"' + re.sub('"', '', f) + '"' for f in fields
             ])
         # Get the results
+        if distinct:
+            if fields is None or len(fields) == 0:
+                distinct = None
+            elif len(fields) == 1:
+                distinct = fields[0]
+            else:
+                raise ValueError('Distinct queries only work with one field')
         results = super(SolrQueryApiSql, self).fetch(
-            resource_id, filters, q, limit, offset, sort
+            resource_id, filters, q, limit, offset, sort, distinct
         )
         # Format the query
         sql = results[1][0].format(
