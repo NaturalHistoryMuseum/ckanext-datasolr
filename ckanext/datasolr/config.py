@@ -5,5 +5,11 @@ config = {
     'id_field': '_id',
     'solr_id_field': '_id',
     'solr_resource_id_field': 'resource_id',
-    'resources': {}
+    'resources': {
+        '_defaults': {
+            'id_field': '_id',
+            'solr_id_field': '_id',
+            'solr_resource_id_field': None
+        }
+    }
 }
