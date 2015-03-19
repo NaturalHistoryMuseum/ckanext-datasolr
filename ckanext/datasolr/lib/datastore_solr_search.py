@@ -59,7 +59,8 @@ class DatastoreSolrSearch(object):
             search_url=self.config['search_url'],
             id_field=self.config['id_field'],
             solr_id_field=self.config['solr_id_field'],
-            solr_resource_id_field=self.config['solr_resource_id_field']
+            solr_resource_id_field=self.config['solr_resource_id_field'],
+            field_mapper=self.config['field_mapper']
         )
         fetch_params = ['resource_id', 'filters', 'q', 'limit', 'offset',
                         'sort', 'fields', 'distinct']

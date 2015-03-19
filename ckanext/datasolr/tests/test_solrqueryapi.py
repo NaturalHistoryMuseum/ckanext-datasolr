@@ -1,5 +1,15 @@
+import re
 from nose.tools import assert_equals, assert_raises, assert_not_in
 from ckanext.datasolr.lib.solrqueryapi import SolrQueryApi, SolrQueryApiSql
+
+
+def custom_field_mapper(field_name):
+    """ A custom field mapper
+
+    This removes non alphanumeric characters, and
+    lower cases the string
+    """
+    return re.sub('[^a-z0-9]', '', field_name.lower())
 
 
 class MockSolr(object):
@@ -41,7 +51,7 @@ class TestSolrQueryApi(object):
             self.solr_query_api.solr.result_formatter
         )
 
-    def test_field_translated_into_solr_query(self):
+    def test_field_query_into_solr(self):
         """ Ensure that the field query provided is translated correctly """
         self.solr_query_api.fetch(
             resource_id='aaabbbccc',
@@ -56,6 +66,40 @@ class TestSolrQueryApi(object):
             assert_equals(sa[1], ['value1', 'value2'])
         else:
             assert_equals(sa[1], ['value2', 'value1'])
+
+    def test_default_field_mapper_is_applied(self):
+        """ Ensure the default field mapper is applied """
+        self.solr_query_api.fetch(
+            resource_id='aaabbbccc',
+            filters={'_F,i;e"l\'-d]1': 'value1'},
+            q={'f""ie-();lD_2': 'value2'},
+            sort='f$IEL*d-3 ASC'
+        )
+        sa = self.solr_query_api.solr.search_args
+        assert_equals(set(sa['q'][0]), set(['_Field1:{}', 'fielD_2:*{}*']))
+        assert_equals(sa['sort'], 'fIELd3 ASC')
+
+    def test_custom_field_mapper_is_applied(self):
+        search_url='http://example.com/solr/select'
+        solr_id_field='custom_id'
+        solr_query_api = SolrQueryApi(
+            search_url=search_url,
+            solr_id_field=solr_id_field,
+            field_mapper=custom_field_mapper
+        )
+        solr_query_api.solr = MockSolr(
+            search_url, solr_id_field, 'AND',
+            self.solr_query_api.solr.result_formatter
+        )
+        solr_query_api.fetch(
+            resource_id='aaabbbccc',
+            filters={'_F,i;e"l\'-d]1': 'value1'},
+            q={'f""ie-();lD_2': 'value2'},
+            sort='f$IEL*d-3 ASC'
+        )
+        sa = solr_query_api.solr.search_args
+        assert_equals(set(sa['q'][0]), set(['field1:{}', 'field2:*{}*']))
+        assert_equals(sa['sort'], 'field3 ASC')
 
     def test_field_multiple_values_translated_into_disjoint_solr_query(self):
         """ Ensure that field query with multiple values is translated correctly """
@@ -124,6 +168,12 @@ class TestSolrQueryApi(object):
         assert_equals(sa['group.main'], 'true')
         assert_equals(sa['group.field'], 'distinctfield')
 
+    def test_no_group_when_not_distinct(self):
+        """ Ensure that group query is not used when distinct isnt' specifed"""
+        results = self.solr_query_api.fetch(resource_id='aabbcc')
+        sa = self.solr_query_api.solr.search_args
+        assert_not_in('group', sa)
+
     def test_sort_is_applied(self):
         """ Ensure the sort is sent to SOLR """
         results = self.solr_query_api.fetch(resource_id='aabbcc',
@@ -138,6 +188,14 @@ class TestSolrQueryApi(object):
         sa = self.solr_query_api.solr.search_args
         assert_equals(sa['sort'], 'field1 ASC')
 
+    def test_sort_parses_complex_sorts(self):
+        """ Test a complex sort statement (with default field mapper) """
+        results = self.solr_query_api.fetch(resource_id='aabbcc',
+                                            sort='"field 1" ASC, "field, 2", ",field "" 3,", "field 4 DESC"')
+        sa = self.solr_query_api.solr.search_args
+        assert_equals(sa['sort'], 'field1 ASC, field2 ASC, field3 ASC, field4DESC ASC')
+
+       
 class TestSolrQueryApiSql(object):
     def setUp(self):
         search_url='http://example.com/solr/select'
