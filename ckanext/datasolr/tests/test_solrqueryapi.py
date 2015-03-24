@@ -1,6 +1,6 @@
 import re
-from nose.tools import assert_equals, assert_raises, assert_not_in
-from ckanext.datasolr.lib.solrqueryapi import SolrQueryApi, SolrQueryApiSql
+from nose.tools import assert_equals, assert_in, assert_not_in
+from ckanext.datasolr.lib.solrqueryapi import ApiQueryToSolr, SolrQueryToSql
 
 
 def custom_field_mapper(field_name):
@@ -38,231 +38,186 @@ class MockSolr(object):
         return self.result_row_count, rows
 
 
-class TestSolrQueryApi(object):
-    def setUp(self):
-        search_url='http://example.com/solr/select'
-        solr_id_field='custom_id'
-        self.solr_query_api = SolrQueryApi(
-            search_url=search_url,
-            solr_id_field=solr_id_field,
-        )
-        self.solr_query_api.solr = MockSolr(
-            search_url, solr_id_field, 'AND',
-            self.solr_query_api.solr.result_formatter
+class TestApiQueryToSolr(object):
+    def setup(self):
+        self.api_to_solr = ApiQueryToSolr(
+            solr_id_field='custom_id',
+            field_types={'field1': 'type1', 'field2': 'type2'}
         )
 
-    def test_field_query_into_solr(self):
-        """ Ensure that the field query provided is translated correctly """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            filters={
-                'field1': 'value1',
-                'field2': 'value2'
-            }
+    def test_validate_strips_out_known_fields_from_filters(self):
+        """ Check that validate strips known fields out of filters"""
+        q, filters = self.api_to_solr.validate(
+            q=None,
+            filters={'field1': 'value1', 'field3': 'value3'}
         )
-        sa = self.solr_query_api.solr.search_args['q']
-        assert_equals(set(sa[0]), set(['field2:{}', 'field1:{}']))
-        if sa[0][0] == 'field1:{}':
-            assert_equals(sa[1], ['value1', 'value2'])
+        assert_equals(filters, {'field3': 'value3'})
+
+    def test_validate_strips_out_known_fields_from_q(self):
+        """ Check that validate strips known fields out of filters"""
+        q, filters = self.api_to_solr.validate(
+            filters=None,
+            q={'field1': 'value1', 'field3': 'value3'}
+        )
+        assert_equals(q, {'field3': 'value3'})
+
+    def test_validate_sets_search_string_to_none(self):
+        """ Check that validate sets q to none when it is a search string """
+        q, filters = self.api_to_solr.validate(
+            q='search string',
+            filters=None
+        )
+        assert_equals(q, None)
+
+    def test_validate_accepts_empty_input(self):
+        """ Check that works with None as values """
+        q, filters = self.api_to_solr.validate(
+            q=None,
+            filters=None
+        )
+        assert_equals(q, None)
+        assert_equals(filters, None)
+
+    def test_build_query_sets_rows_and_start(self):
+        """ Check build_query sets rows and start from offset and limit """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            offset=12,
+            limit=35
+        )
+        assert_equals(solr_args['start'], 12)
+        assert_equals(solr_args['rows'], 35)
+
+    def test_build_query_sets_groups_from_distinct(self):
+        """ Check build_query uses distinct to create a group """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            distinct='field1'
+        )
+        assert_equals(solr_args['group'], 'true')
+        assert_equals(solr_args['group.field'], 'field1')
+
+    def test_build_query_sets_sort(self):
+        """ Check build query applies provided term sort """
+        # Single term
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            sort='field1 DESC, field2 ASC'
+        )
+        assert_equals(solr_args['sort'], 'field1 DESC, field2 ASC')
+
+    def test_build_query_sets_sort_multiple_default(self):
+        """ Check build query provides a default sort """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            sort='field1, field2'
+        )
+        assert_equals(solr_args['sort'], 'field1 ASC, field2 ASC')
+
+    def test_build_query_unquotes_sort_fields(self):
+        """ Check build query unquotes sort terms """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            sort='"field1" ASC, "field2" DESC'
+        )
+        assert_equals(solr_args['sort'], 'field1 ASC, field2 DESC')
+
+    def test_build_query_filters(self):
+        """ Test the build query builds from the filters """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            filters={'field1': 'search1', 'field2': 'search2'}
+        )
+        assert_equals(set(solr_args['q'][0]), set(['field1:{}', 'field2:{}']))
+        if solr_args['q'][1][0] == 'field1:{}':
+            assert_equals(solr_args['q'][1], ['search1', 'search2'])
         else:
-            assert_equals(sa[1], ['value2', 'value1'])
+            assert_equals(solr_args['q'][1], ['search2', 'search1'])
 
-    def test_default_field_mapper_is_applied(self):
-        """ Ensure the default field mapper is applied """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            filters={'_F,i;e"l\'-d]1': 'value1'},
-            q={'f""ie-();lD_2': 'value2'},
-            sort='f$IEL*d-3 ASC'
+    def test_build_query_fts(self):
+        """ Test the build query builds from the full text search"""
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            q='a carrot cake'
         )
-        sa = self.solr_query_api.solr.search_args
-        assert_equals(set(sa['q'][0]), set(['_Field1:{}', 'fielD_2:*{}*']))
-        assert_equals(sa['sort'], 'fIELd3 ASC')
+        assert_equals(solr_args['q'][0], ['_fulltext:{}']*3)
+        assert_equals(set(solr_args['q'][1]), set(['a', 'carrot', 'cake']))
 
-    def test_custom_field_mapper_is_applied(self):
-        search_url='http://example.com/solr/select'
-        solr_id_field='custom_id'
-        solr_query_api = SolrQueryApi(
-            search_url=search_url,
-            solr_id_field=solr_id_field,
-            field_mapper=custom_field_mapper
+    def test_build_query_field_fts(self):
+        """ Test the build query builds from the field fts """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            q={'field1': 'search1', 'field2': 'search2'}
         )
-        solr_query_api.solr = MockSolr(
-            search_url, solr_id_field, 'AND',
-            self.solr_query_api.solr.result_formatter
-        )
-        solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            filters={'_F,i;e"l\'-d]1': 'value1'},
-            q={'f""ie-();lD_2': 'value2'},
-            sort='f$IEL*d-3 ASC'
-        )
-        sa = solr_query_api.solr.search_args
-        assert_equals(set(sa['q'][0]), set(['field1:{}', 'field2:*{}*']))
-        assert_equals(sa['sort'], 'field3 ASC')
-
-    def test_field_multiple_values_translated_into_disjoint_solr_query(self):
-        """ Ensure that field query with multiple values is translated correctly """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            filters={
-                'field1': ['value1', 'value2']
-            }
-        )
-        sa = self.solr_query_api.solr.search_args['q']
-        assert_equals(sa[0], ['(field1:{} OR field1:{})'])
-        assert_equals(sa[1], ['value1', 'value2'])
-
-    def test_fts_translated_into_solr_query(self):
-        """ Ensure that full text query provided is translated correctly """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            q='the little brown fox'
-        )
-        sa = self.solr_query_api.solr.search_args['q']
-        assert_equals(sa[0], ['_fulltext:{}']*4)
-        assert_equals(set(sa[1]), set(['the', 'little', 'brown', 'fox']))
-
-    def test_field_fts_translated_into_solr_query(self):
-        """ Ensure that the field full text query provided is translated correctly """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            q={
-                'field1': 'value1',
-                'field2': 'value2'
-            }
-        )
-        sa = self.solr_query_api.solr.search_args['q']
-        assert_equals(set(sa[0]), set(['field2:*{}*', 'field1:*{}*']))
-        if sa[0][0] == 'field1:*{}*':
-            assert_equals(sa[1], ['value1', 'value2'])
+        assert_equals(set(solr_args['q'][0]), set(['field1:*{}*', 'field2:*{}*']))
+        if solr_args['q'][1][0] == 'field1:*{}*':
+            assert_equals(solr_args['q'][1], ['search1', 'search2'])
         else:
-            assert_equals(sa[1], ['value2', 'value1'])
+            assert_equals(solr_args['q'][1], ['search2', 'search1'])
 
-    def test_filters_can_be_none(self):
-        """ Ensure that q/filters can be none """
-        self.solr_query_api.fetch(resource_id='aaabbbccc')
-
-    def test_combined_filters(self):
-        """ Ensure that providing field and full text query works """
-        self.solr_query_api.fetch(
-            resource_id='aaabbbccc',
-            filters={'field1':'value1'},
-            q='hello world'
+    def test_build_query_strips_field_fts_postgres_syntax(self):
+        """ Test the build query strips postgres suffic match syntax """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            q={'field1': 'search1:*', 'field2': 'search2:*'}
         )
-        sa = self.solr_query_api.solr.search_args['q']
-        assert_equals(set(sa[0]), set(['field1:{}'] + ['_fulltext:{}']*2))
-        assert_equals(set(sa[1]), set(['value1', 'hello', 'world']))
+        assert_equals(set(solr_args['q'][1]), set(['search1', 'search2']))
 
-    def test_returned_data(self):
-        """ Test the returned data is as expected """
-        results = self.solr_query_api.fetch(resource_id='aabbcc', q='hello')
-        assert_equals(results, (3, ['a', 'b', 'c']))
 
-    def test_distinct_field_is_sent_as_group(self):
-        """ Ensure that distinct field is sent to solr as group query """
-        results = self.solr_query_api.fetch(resource_id='aabbcc',
-                                            distinct='distinctfield')
-        sa = self.solr_query_api.solr.search_args
-        assert_equals(sa['group'], 'true')
-        assert_equals(sa['group.main'], 'true')
-        assert_equals(sa['group.field'], 'distinctfield')
-
-    def test_no_group_when_not_distinct(self):
-        """ Ensure that group query is not used when distinct isnt' specifed"""
-        results = self.solr_query_api.fetch(resource_id='aabbcc')
-        sa = self.solr_query_api.solr.search_args
-        assert_not_in('group', sa)
-
-    def test_sort_is_applied(self):
-        """ Ensure the sort is sent to SOLR """
-        results = self.solr_query_api.fetch(resource_id='aabbcc',
-                                            sort='field1 DESC')
-        sa = self.solr_query_api.solr.search_args
-        assert_equals(sa['sort'], 'field1 DESC')
-
-    def test_sort_is_set_to_asc_by_default(self):
-        """ Ensure the sort is set to ASC by default """
-        results = self.solr_query_api.fetch(resource_id='aabbcc',
-                                            sort='field1')
-        sa = self.solr_query_api.solr.search_args
-        assert_equals(sa['sort'], 'field1 ASC')
-
-    def test_sort_parses_complex_sorts(self):
-        """ Test a complex sort statement (with default field mapper) """
-        results = self.solr_query_api.fetch(resource_id='aabbcc',
-                                            sort='"field 1" ASC, "field, 2", ",field "" 3,", "field 4 DESC"')
-        sa = self.solr_query_api.solr.search_args
-        assert_equals(sa['sort'], 'field1 ASC, field2 ASC, field3 ASC, field4DESC ASC')
-
-       
-class TestSolrQueryApiSql(object):
-    def setUp(self):
-        search_url='http://example.com/solr/select'
-        solr_id_field='custom_id'
-        self.solr_query_api_sql = SolrQueryApiSql(
-            search_url=search_url,
-            solr_id_field=solr_id_field,
-            id_field='other_id'
+class TestSolrQueryResultToSql(object):
+    def setup(self):
+        self.solr_to_sql = SolrQueryToSql(
+            search_url='http://example.com/solr/select',
+            id_field='id_field',
+            solr_id_field='solr_id_field'
         )
-        self.solr_query_api_sql.solr = MockSolr(
-            search_url, solr_id_field, 'AND',
-            self.solr_query_api_sql.solr.result_formatter
+        self.solr_to_sql.solr = MockSolr(
+            search_url='http://example.com/solr/select',
+            id_field='solr_id_field',
+            query_type='AND',
+            result_formatter=self.solr_to_sql.solr.result_formatter
         )
 
-    def test_query_sql_with_all_fields(self):
-        """ Ensure the generated SQL fetches the rows as exepected """
-        result = self.solr_query_api_sql.fetch(resource_id='aabbcc', q='hello')
-        assert_equals(result[1].replace(' ', '').replace("\n", ''),
-            'SELECT*FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
+    def test_solr_row_count_returned(self):
+        """ Ensure the row count provided by SOLR is returned """
+        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        assert_equals(total, 3)
+
+    def test_sql_contains_id_match(self):
+        """ Ensure that the returned SQL matches the ID against the defined values """
+        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', sql)
+        assert_in('"id_field"=ANY(VALUES(%s),(%s),(%s))', sql)
+
+    def test_replacement_values(self):
+        """ Test the replacement values are correct"""
+        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        assert_equals(['a', 'b', 'c'], values)
+
+    def test_select_all_fields_by_default(self):
+        """ Test all fields are selected by default """
+        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', sql)
+        assert_in('SELECT*FROM', sql)
+
+    def test_select_given_fields(self):
+        """ Test given fields are selected """
+        (total, sql, values) = self.solr_to_sql.fetch(
+            'aaa', solr_args={'q':'*:*'}, fields=['field1', 'field2']
         )
+        sql = re.sub('[ \n\r]', '', sql)
+        assert_in('SELECT"field1","field2"FROM', sql)
 
-    def test_query_sql_with_selected_fields(self):
-        """ Ensure the generated SQL fetches the rows as exepected """
-        result = self.solr_query_api_sql.fetch(
-            resource_id='aabbcc',
-            q='hello',
-            fields=['some_field', 'another_field']
+    def test_no_default_order(self):
+        """ Test there is no order clause by default """
+        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', sql)
+        assert_not_in('order', sql.lower())
+
+    def test_given_order(self):
+        """ Test the given order is parsed and applied to the sql """
+        (total, sql, values) = self.solr_to_sql.fetch(
+            'aaa',  solr_args={'q':'*:*'}, sort='field1, field2 DESC'
         )
-        assert_equals(result[1].replace(' ', '').replace("\n", ''),
-            'SELECT"some_field","another_field"FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
-        )
-
-    def test_query_sql_removes_field_double_quote(self):
-        """ Ensure the generated SQL doesn't have double quotes in column names """
-        result = self.solr_query_api_sql.fetch(
-            resource_id='aabbcc',
-            q='hello',
-            fields=['some_"field', 'ano"t"her_field']
-        )
-        assert_equals(result[1].replace(' ', '').replace("\n", ''),
-            'SELECT"some_field","another_field"FROM"aabbcc"WHEREother_id=ANY(VALUES(%s),(%s),(%s))'
-        )
-
-    def test_query_sql_values(self):
-        """ Ensure the values for the generated SQL are correct """
-        result = self.solr_query_api_sql.fetch(resource_id='aabbcc', q='hello')
-        assert_equals(set(result[2]), set(['a', 'b', 'c']))
-
-    def test_distinct_applies_distinct_field(self):
-        """ Ensure that a distinct query applies the group fields """
-        result = self.solr_query_api_sql.fetch(resource_id='aabbcc',
-                                               fields=['field1'],
-                                               distinct=True)
-        sa = self.solr_query_api_sql.solr.search_args
-        assert_equals(sa['group'], 'true')
-        assert_equals(sa['group.main'], 'true')
-        assert_equals(sa['group.field'], 'field1')
-
-    def test_multiple_distinct_fields_raise(self):
-        """ Test that attempting to define multiple distinct fields raises """
-        assert_raises(ValueError, self.solr_query_api_sql.fetch,
-                      resource_id='a', fields=['f1', 'f2'],
-                      distinct=True)
-
-    def test_distinct_with_no_defined_field_does_nothing(self):
-        """ Ensure that selecting 'distinct' with no fields does nothing """
-        result = self.solr_query_api_sql.fetch(resource_id='aabbcc',
-                                               distinct=True)
-        sa = self.solr_query_api_sql.solr.search_args
-        assert_not_in('group', sa)
+        sql = re.sub('[ \n\r]', '', sql)
+        assert_in('ORDERBY"field1"ASC,"field2"DESC', sql)

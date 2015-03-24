@@ -29,6 +29,7 @@ def datastore_solr_search(context, data_dict):
             searcher = DatastoreSolrSearch(
                 context, data_dict, resource_config, connection
             )
+            searcher.validate()
             return searcher.fetch()
         finally:
             sqa_cnx.close()
