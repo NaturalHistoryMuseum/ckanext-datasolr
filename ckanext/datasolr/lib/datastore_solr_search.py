@@ -108,7 +108,9 @@ class DatastoreSolrSearch(object):
         """ Run the query and fetch the data
         """
         self._check_access()
-        solr_args = {}
+        solr_args = {
+            'q': ([], [])
+        }
         for plugin in PluginImplementations(IDataSolr):
             solr_args = plugin.datasolr_search(
                 self.context, self.params, self.fields, solr_args
