@@ -7,11 +7,28 @@ from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.logic.action import datastore_solr_search
 
 
+class DataSolrException(Exception):
+    pass
+
+
 class DataSolrPlugin(p.SingletonPlugin):
     p.implements(p.interfaces.IConfigurable)
     p.implements(p.interfaces.IActions)
     p.implements(p.IRoutes, inherit=True)
     p.implements(IDataSolr)
+
+    def __new__(cls, *args, **kwargs):
+        """ Ensure we are the first IDataSolr plugin """
+        idatasolr_extensions = p.PluginImplementations(IDataSolr)
+        idatasolr_extensions = idatasolr_extensions.extensions()
+
+        if idatasolr_extensions and idatasolr_extensions[0].__class__ != cls:
+            msg = ('The "datasolr" plugin must be the first IDataSolr '
+                   'plugin loaded. Change the order it is loaded in '
+                   '"ckan.plugins" in your CKAN .ini file and try again.')
+            raise  DataSolrException(msg)
+
+        return super(cls, cls).__new__(cls, *args, **kwargs)
 
     # IConfigurable
     def configure(self, ckan_config):
