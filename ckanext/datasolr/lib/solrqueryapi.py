@@ -74,7 +74,8 @@ class ApiQueryToSolr(object):
             field name to value for wildcard searches on individual fields
         @param limit: Number of rows to fetch. Defaults to 100.
         @param offset: Offset to fetch from. Defaults to 0.
-        @param sort: SORT statement (eg. fieldName ASC)
+        @param sort: SORT statement as a list of tuples
+                     (eg. [('field1', 'ASC'), ('field2', 'DESC'))
         @param distinct: If not False, field on which to group the result
             (returning only one row per value of the field)
         @returns a dictionary defining SOLR request parameters
@@ -87,8 +88,7 @@ class ApiQueryToSolr(object):
         if sort is None:
             sort = '{} ASC'.format(self.solr_id_field)
         else:
-            sort_s = parse_sort_statement(sort)
-            sort = ', '.join([self.field_mapper(v[0]) + ' ' + v[1] for v in sort_s])
+            sort = ', '.join([self.field_mapper(v[0]) + ' ' + v[1] for v in sort])
         if distinct:
             solr_args['group'] = 'true'
             solr_args['group.field'] = distinct
@@ -168,7 +168,8 @@ class SolrQueryToSql(object):
             will be removed;
         @param solr_args: Solr query arguments
         @param fields: Fields to return
-        @param sort: Sort expression
+        @param sort: Sort expression as a list of tuples
+                     (eg. [('field1', 'ASC'), ('field2', 'DESC')])
 
         @returns: A tuple (total number of records, sql query, sql values)
         """
@@ -180,8 +181,7 @@ class SolrQueryToSql(object):
             ])
         order_statement = ''
         if sort:
-            sort_s = parse_sort_statement(sort)
-            sort_s = [(re.sub('"', '', f), o) for f,o in sort_s]
+            sort_s = [(re.sub('"', '', f), o) for f,o in sort]
             order_statement = 'ORDER BY {}'.format(
                 ', '.join('"{}" {}'.format(f,o) for f, o in sort_s)
             )

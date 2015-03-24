@@ -3,6 +3,7 @@ from pylons import config as pylons_config
 import re
 
 from ckanext.datasolr.config import config
+from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.logic.action import datastore_solr_search
 
 
@@ -10,6 +11,7 @@ class DataSolrPlugin(p.SingletonPlugin):
     p.implements(p.interfaces.IConfigurable)
     p.implements(p.interfaces.IActions)
     p.implements(p.IRoutes, inherit=True)
+    p.implements(IDataSolr)
 
     # IConfigurable
     def configure(self, ckan_config):
@@ -54,3 +56,67 @@ class DataSolrPlugin(p.SingletonPlugin):
                 ver=u'/3'
             )
         return map
+
+    # IDataSolr
+    def datasolr_validate(self, context, data_dict, field_types):
+        """ Validates the input request.
+
+        This is the main validator, which will remove all known fields
+        from fields, sort, q as well as all other accepted input parameters.
+        """
+        # Validate field list
+        if 'fields' in data_dict:
+            data_dict['fields'] = list(set(data_dict['fields']) - set(field_types.keys()))
+        # Validate sort
+        val_sort = []
+        for field, sort_order in data_dict.get('sort', []):
+            if field not in field_types:
+                val_sort.append((field, sort_order))
+        data_dict['sort'] = val_sort
+        # Validate q/filters using api_to_solr
+        q, filters = context['api_to_solr'].validate(
+            data_dict.get('q', None),
+            data_dict.get('filters', {})
+        )
+        if q:
+            data_dict['q'] = q
+        elif 'q' in data_dict:
+            del data_dict['q']
+        if filters:
+            data_dict['filters'] = filters
+        elif 'filters' in data_dict:
+            del data_dict['filters']
+        # Validate distinct query
+        if 'distinct' in data_dict:
+            del data_dict['distinct']
+        # Validate resource_id field
+        if 'resource_id' in data_dict:
+            del data_dict['resource_id']
+        # Validate offset & limit
+        if 'offset' in data_dict:
+            try:
+                v = int(data_dict['offset'])
+                del data_dict['offset']
+            except ValueError:
+                pass
+        if 'limit' in data_dict:
+            try:
+                v = int(data_dict['limit'])
+                del data_dict['limit']
+            except ValueError:
+                pass
+        return data_dict
+
+    def datasolr_search(self, context, data_dict, field_types, query_dict):
+        """ Build the solr search """
+        api_to_solr = context['api_to_solr']
+        solr_args = api_to_solr.build_query(
+            resource_id=data_dict['resource_id'],
+            q=data_dict.get('q', None),
+            filters=data_dict.get('filters', None),
+            offset=data_dict.get('offset', 0),
+            limit=data_dict.get('limit', 100),
+            sort=data_dict.get('sort', None),
+            distinct=data_dict.get('distinct', False)
+        )
+        return dict(query_dict.items() + solr_args.items())

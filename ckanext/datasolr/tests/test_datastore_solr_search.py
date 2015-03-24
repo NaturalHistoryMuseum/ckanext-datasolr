@@ -1,11 +1,15 @@
 from ckanext.datasolr.lib.datastore_solr_search import DatastoreSolrSearch
+from ckanext.datasolr.plugin import DataSolrPlugin
 from nose.tools import assert_equals, assert_in
 from mock import Mock, patch
 from threading import current_thread
 
 _mock_solr = {}
 
-class MockSolrQueryApiSql(object):
+def plugin_implementations(cls):
+    return [DataSolrPlugin()]
+
+class MockSolrQueryToSql(object):
     def __init__(self, search_url, id_field, solr_id_field,
                  solr_resource_id_field=None):
         self.search_url = search_url
@@ -64,13 +68,17 @@ class TestDatastoreSolrSearch(object):
             'search_url': 'http://localhost/solr/select',
             'id_field': 'postgres_id_field',
             'solr_id_field': 'solr_id_field',
-            'solr_resource_id_field': None
+            'solr_resource_id_field': None,
+            'field_mapper': 'ckanext.datasolr.lib.solrqueryapi.default_field_mapper'
         }
-        self.solr_patcher = patch('ckanext.datasolr.lib.datastore_solr_search.SolrQueryApiSql', MockSolrQueryApiSql)
+        self.solr_patcher = patch('ckanext.datasolr.lib.datastore_solr_search.SolrQueryToSql', MockSolrQueryToSql)
+        self.plugin_patcher = patch('ckanext.datasolr.lib.datastore_solr_search.PluginImplementations', plugin_implementations)
         self.solr_patcher.start()
+        self.plugin_patcher.start()
 
     def teardown(self):
         self.solr_patcher.stop()
+        self.plugin_patcher.stop()
         del _mock_solr[current_thread().ident]
 
     def test_total_from_solr_is_returned(self):
@@ -78,7 +86,9 @@ class TestDatastoreSolrSearch(object):
         search = DatastoreSolrSearch({}, {'resource_id': 'some_resource'},
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
+        search.validate()
         result = search.fetch()
+
         assert_equals(9000, result['total'])
 
     def test_sql_from_solrqueryapisql_is_executed(self):
@@ -86,6 +96,7 @@ class TestDatastoreSolrSearch(object):
         search = DatastoreSolrSearch({}, {'resource_id': 'some_resource'},
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
+        search.validate()
         search.fetch()
         assert_equals('sql-query', self.connection.sql)
         assert_equals((9,8,7), self.connection.replacements)
@@ -95,6 +106,7 @@ class TestDatastoreSolrSearch(object):
         search = DatastoreSolrSearch({}, {'resource_id': 'some_resource'},
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
+        search.validate()
         result = search.fetch()
         assert_equals([
             {'field1': 'row1-field1-type1', 'field2': 'row1-field2-type2'},
@@ -107,6 +119,7 @@ class TestDatastoreSolrSearch(object):
         search = DatastoreSolrSearch({}, {'resource_id': 'some_resource'},
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
+        search.validate()
         result = search.fetch()
         expected = [
             {'id': 'field1', 'type': 'type1'},
@@ -121,6 +134,7 @@ class TestDatastoreSolrSearch(object):
         search = DatastoreSolrSearch({}, {'resource_id': 'aaa'},
                                        self.config, self.connection)
         search._check_access = Mock(return_value=True)
+        search.validate()
         search.fetch()
         solr = _mock_solr[current_thread().ident]
         assert_equals('some_resource', solr.query['resource_id'])
@@ -132,6 +146,7 @@ class TestDatastoreSolrSearch(object):
            self.config, self.connection
         )
         search._check_access = Mock(return_value=True)
+        search.validate()
         result = search.fetch()
         assert_equals(result['q'], 'word')
         assert_equals(result['resource_id'], 'some_resource')

@@ -4,7 +4,10 @@ import ckanext.datastore.logic.schema as dsschema
 import copy
 
 from ckan.lib.navl.dictization_functions import validate
+from ckan.plugins import PluginImplementations
+from ckanext.datasolr.lib.helpers import parse_sort_statement
 from ckanext.datasolr.lib.solrqueryapi import ApiQueryToSolr, SolrQueryToSql
+from ckanext.datasolr.interfaces import IDataSolr
 
 
 class DatastoreSolrSearch(object):
@@ -64,47 +67,52 @@ class DatastoreSolrSearch(object):
                 'Resource "{0}" was not found.'.format(self.params['resource_id'])
             ))
         self.params['resource_id'] = self.resource_id
-        # Validate and set default field list
+        # Parse & Set default fields if none are present
         if 'fields' in self.params:
-            fields = datastore_helpers.get_list(self.params['fields'])
-            fields = list(set(fields) & set(self.fields.keys()))
-            if len(fields) == 0:
-                raise p.toolkit.ValidationError({
-                    'query': 'Invalid field list'
-                })
-            else:
-                self.params['fields'] = fields
+            self.params['fields'] = datastore_helpers.get_list(self.params['fields'])
         else:
             self.params['fields'] = self.fields.keys()
-        # Validate distinct query
+        # Parse sort statement
+        if 'sort' in self.params:
+            self.params['sort'] = parse_sort_statement(self.params['sort'])
+        # Validate distinct query (we only accept one field)
         if self.params.get('distinct', False):
             if len(self.params['fields']) != 1:
-                raise p.toolkit.ValidationError(p.toolkit._(
-                    'Distinct queries can only have one field'
-                ))
+                raise p.toolkit.ValidationError({
+                    'distinct': ['Distinct queries can only have one field']
+                })
             self.params['distinct'] = self.params['fields'][0]
-        # Validate input parameters via plugins
-        q = copy.copy(self.params.get('q', None))
-        filters = copy.copy(self.params.get('filters', None))
-        q, filters = self.api_to_solr.validate(q, filters)
-        if q or filters:
-            raise p.toolkit.ValidationError(p.toolkit._(
-                'Unknown filters'
-            ))
+        # Now invoke plugins (including the DataSolr plugin) validation
+        self.context['api_to_solr'] = self.api_to_solr
+        data_dict = copy.deepcopy(self.params)
+        for plugin in PluginImplementations(IDataSolr):
+            data_dict = plugin.datasolr_validate(
+                self.context, data_dict, self.fields
+            )
+        for key, values in data_dict.items():
+            if not values:
+                continue
+            if isinstance(values, basestring):
+                value = values
+            elif isinstance(values, (list, tuple)):
+                value = values[0]
+            elif isinstance(values, dict):
+                value = values.keys()[0]
+            else:
+                value = values
+            raise p.toolkit.ValidationError({
+                key: [u'invalid value "{0}"'.format(value)]
+            })
 
     def fetch(self):
         """ Run the query and fetch the data
         """
         self._check_access()
-        solr_args = self.api_to_solr.build_query(
-            resource_id=self.resource_id,
-            q=self.params.get('q', None),
-            filters=self.params.get('filters', None),
-            offset=self.params.get('offset', 0),
-            limit=self.params.get('limit', 100),
-            sort=self.params.get('sort', None),
-            distinct=self.params.get('distinct', False)
-        )
+        solr_args = {}
+        for plugin in PluginImplementations(IDataSolr):
+            solr_args = plugin.datasolr_search(
+                self.context, self.params, self.fields, solr_args
+            )
         (total, sql, replacements) = self.solr_to_sql.fetch(
             resource_id=self.resource_id,
             solr_args=solr_args,

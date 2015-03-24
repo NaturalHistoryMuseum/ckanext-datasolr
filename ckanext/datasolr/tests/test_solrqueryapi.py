@@ -102,25 +102,9 @@ class TestApiQueryToSolr(object):
         # Single term
         solr_args = self.api_to_solr.build_query(
             resource_id='aaa',
-            sort='field1 DESC, field2 ASC'
+            sort=[('field1', 'DESC'), ('field2', 'ASC')]
         )
         assert_equals(solr_args['sort'], 'field1 DESC, field2 ASC')
-
-    def test_build_query_sets_sort_multiple_default(self):
-        """ Check build query provides a default sort """
-        solr_args = self.api_to_solr.build_query(
-            resource_id='aaa',
-            sort='field1, field2'
-        )
-        assert_equals(solr_args['sort'], 'field1 ASC, field2 ASC')
-
-    def test_build_query_unquotes_sort_fields(self):
-        """ Check build query unquotes sort terms """
-        solr_args = self.api_to_solr.build_query(
-            resource_id='aaa',
-            sort='"field1" ASC, "field2" DESC'
-        )
-        assert_equals(solr_args['sort'], 'field1 ASC, field2 DESC')
 
     def test_build_query_filters(self):
         """ Test the build query builds from the filters """
@@ -217,7 +201,7 @@ class TestSolrQueryResultToSql(object):
     def test_given_order(self):
         """ Test the given order is parsed and applied to the sql """
         (total, sql, values) = self.solr_to_sql.fetch(
-            'aaa',  solr_args={'q':'*:*'}, sort='field1, field2 DESC'
+            'aaa',  solr_args={'q':'*:*'}, sort=[('field1', 'ASC'), ('field2', 'DESC')]
         )
         sql = re.sub('[ \n\r]', '', sql)
         assert_in('ORDERBY"field1"ASC,"field2"DESC', sql)
