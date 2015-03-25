@@ -106,9 +106,6 @@ class DataSolrPlugin(p.SingletonPlugin):
         # Validate distinct query
         if 'distinct' in data_dict:
             del data_dict['distinct']
-        # Validate resource_id field
-        if 'resource_id' in data_dict:
-            del data_dict['resource_id']
         # Validate offset & limit
         if 'offset' in data_dict:
             try:

@@ -90,7 +90,7 @@ class DatastoreSolrSearch(object):
                 self.context, data_dict, self.fields
             )
         for key, values in data_dict.items():
-            if not values:
+            if key in ['resource_id'] or not values:
                 continue
             if isinstance(values, basestring):
                 value = values
