@@ -109,12 +109,15 @@ class DatastoreSolrSearch(object):
         """
         self._check_access()
         solr_args = {
-            'q': ([], [])
+            'q': ([], []),
+            'fields': self.params['fields']
         }
         for plugin in PluginImplementations(IDataSolr):
             solr_args = plugin.datasolr_search(
                 self.context, self.params, self.fields, solr_args
             )
+        self.params['fields'] = solr_args['fields']
+        del solr_args['fields']
         (total, sql, replacements) = self.solr_to_sql.fetch(
             resource_id=self.resource_id,
             solr_args=solr_args,

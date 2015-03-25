@@ -1,13 +1,56 @@
+import ckan.plugins as p
+import copy
+
 from ckanext.datasolr.lib.datastore_solr_search import DatastoreSolrSearch
 from ckanext.datasolr.plugin import DataSolrPlugin
-from nose.tools import assert_equals, assert_in
+from nose.tools import assert_equals, assert_in, assert_raises
 from mock import Mock, patch
 from threading import current_thread
 
 _mock_solr = {}
+_mock_plugin = {}
+
+
+class MockPlugin(object):
+    def __init__(self):
+        _mock_plugin[current_thread().ident] = self
+        self.validate = {}
+        self.search = {}
+
+    def datasolr_validate(self, context, data_dict, fields):
+        """ Remove data_dict['_test'] and data_dict['filters']['_test']
+            to validate them """
+        self.validate = {
+            'context': copy.deepcopy(context),
+            'data_dict': copy.deepcopy(data_dict),
+            'fields': copy.deepcopy(fields)
+        }
+        if 'filters' in data_dict and '_test' in data_dict['filters']:
+            del data_dict['filters']['_test']
+        if 'fields' in data_dict and '_test' in data_dict['fields']:
+            data_dict['fields'].remove('_test')
+        if 'sort' in data_dict and ('_test', 'ASC') in data_dict['sort']:
+            data_dict['sort'].remove(('_test', 'ASC'))
+        return data_dict
+
+    def datasolr_search(self, context, data_dict, fields, query_dict):
+        self.search = {
+            'context': context,
+            'data_dict': data_dict,
+            'fields': fields,
+            'query_dict': query_dict
+        }
+        if 'filters' in data_dict and '_test' in data_dict['filters']:
+            query_dict['q'][0].append('field1:{}')
+            query_dict['q'][1].append('test value')
+            query_dict['new'] = 'new'
+            query_dict['fields'].append('field2')
+        return query_dict
+
 
 def plugin_implementations(cls):
-    return [DataSolrPlugin()]
+    return [DataSolrPlugin(), MockPlugin()]
+
 
 class MockSolrQueryToSql(object):
     def __init__(self, search_url, id_field, solr_id_field,
@@ -79,7 +122,11 @@ class TestDatastoreSolrSearch(object):
     def teardown(self):
         self.solr_patcher.stop()
         self.plugin_patcher.stop()
-        del _mock_solr[current_thread().ident]
+        thread_ident = current_thread().ident
+        if thread_ident in _mock_solr:
+            del _mock_solr[thread_ident]
+        if thread_ident in _mock_plugin:
+            del _mock_plugin[thread_ident]
 
     def test_total_from_solr_is_returned(self):
         """ Ensure the total count returned by solr is returned """
@@ -150,3 +197,112 @@ class TestDatastoreSolrSearch(object):
         result = search.fetch()
         assert_equals(result['q'], 'word')
         assert_equals(result['resource_id'], 'some_resource')
+
+    def test_validation_fails_with_unknown_field(self):
+        """ Test validation fails with unknown fields """
+        search = DatastoreSolrSearch(
+            {},
+            {'resource_id': 'some_resource', 'fields': 'field1, other'},
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        assert_raises(p.toolkit.ValidationError, search.validate)
+
+    def test_validation_fails_with_unknown_sort(self):
+        """ Test validation fails with unknown sorts """
+        search = DatastoreSolrSearch(
+            {},
+            {'resource_id': 'some_resource', 'sort': 'field1, other'},
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        assert_raises(p.toolkit.ValidationError, search.validate)
+
+    def test_validation_fails_with_unknown_filters(self):
+        """ Test validation fails with unknown fields """
+        search = DatastoreSolrSearch(
+            {},
+            {'resource_id': 'some_resource', 'filters': {'v':'v'}},
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        assert_raises(p.toolkit.ValidationError, search.validate)
+
+    def test_validation_from_plugin(self):
+        """ Test that fields/sorts/filters validated by plugins
+            do not cause a validation error
+        """
+        data_dict = {
+            'resource_id': 'some_resource',
+            'fields': 'field1, _test',
+            'sort': 'field1, _test',
+            'filters': {'field1': 'v1', '_test': 'v2'}
+        }
+        search = DatastoreSolrSearch(
+            {}, data_dict,
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        try:
+            search.validate()
+        except p.toolkit.ValidationError:
+            assert False
+
+    def test_plugin_validate_is_invoked_with_data_dict(self):
+        """ Test that plugins validate methods are invoked with the data dict and
+            only unvalidated fields are left.
+        """
+        data_dict = {
+            'resource_id': 'some_resource',
+            'fields': 'field1, _test',
+            'sort': 'field1, _test',
+            'filters': {'field1': 'v1', '_test': 'v2'}
+        }
+        search = DatastoreSolrSearch(
+            {}, data_dict,
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        p = _mock_plugin[current_thread().ident]
+        assert_equals(p.validate['data_dict']['resource_id'], 'some_resource')
+        assert_equals(p.validate['data_dict']['fields'], ['_test'])
+        assert_equals(p.validate['data_dict']['sort'], [('_test', 'ASC')])
+        assert_equals(p.validate['data_dict']['filters'], {'_test':'v2'})
+
+    def test_plugin_validate_context_includes_api_to_solr(self):
+        """ Ensure the api_to_solr object is available to plugins """
+        search = DatastoreSolrSearch(
+            {}, {'resource_id': 'some_resource'},
+           self.config, self.connection
+        )
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        p = _mock_plugin[current_thread().ident]
+        assert_in('api_to_solr', p.validate['context'])
+
+    def test_plugin_can_edit_solr_query(self):
+        search = DatastoreSolrSearch(
+            {}, {'resource_id': 'aaa', 'filters':{'_test':'v'}},
+            self.config, self.connection)
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        search.fetch()
+        solr = _mock_solr[current_thread().ident]
+        assert_equals((['*:*', 'field1:{}'], ['test value']), solr.query['solr_args']['q'])
+        assert_equals('new', solr.query['solr_args']['new'])
+
+    def test_plugin_can_edit_fields_to_fetch(self):
+        search = DatastoreSolrSearch(
+            {},
+            {
+                'resource_id': 'aaa',
+                'filters':{'_test':'v'},
+                'fields': 'field1'
+            },
+            self.config, self.connection)
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        search.fetch()
+        solr = _mock_solr[current_thread().ident]
+        assert_equals(solr.query['fields'], ['field1', 'field2'])
