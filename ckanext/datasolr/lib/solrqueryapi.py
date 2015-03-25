@@ -1,7 +1,7 @@
 import re
 import ckanext.datastore.helpers as datastore_helpers
 from ckanext.datasolr.lib.solr import Solr
-from ckanext.datasolr.lib.helpers import parse_sort_statement
+from ckanext.datasolr.lib.helpers import parse_sort_statement, split_words
 from importlib import import_module
 
 
@@ -124,7 +124,7 @@ class ApiQueryToSolr(object):
                         solr_values.append(field_value)
                     solr_query.append('(' + ' OR '.join(field_query) + ')')
         if isinstance(q, basestring):
-            words = (w for w in q.split(' ') if w)
+            words = split_words(q, quotes=True)
             for word in words:
                 solr_query.append('_fulltext:{}')
                 solr_values.append(word)

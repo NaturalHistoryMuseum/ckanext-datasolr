@@ -147,6 +147,16 @@ class TestApiQueryToSolr(object):
         )
         assert_equals(set(solr_args['q'][1]), set(['search1', 'search2']))
 
+    def test_build_query_supports_phrase_searches(self):
+        """ Test the build query supports phrase searches """
+        solr_args = self.api_to_solr.build_query(
+            resource_id='aaa',
+            q='a "carrot cake" over the "blue moon"'
+        )
+        assert_equals(solr_args['q'][0], ['_fulltext:{}']*5)
+        assert_equals(set(solr_args['q'][1]), set([
+            'a', 'carrot cake', 'over', 'the', 'blue moon']))
+
 
 class TestSolrQueryResultToSql(object):
     def setup(self):
