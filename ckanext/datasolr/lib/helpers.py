@@ -1,4 +1,6 @@
 import re
+import sqlparse
+
 
 def split_words(phrase, quotes=True):
     """ Split a phrase into words
@@ -68,3 +70,12 @@ def parse_sort_statement(sort):
             order = 'ASC'
         order_statements.append((field, order))
     return order_statements
+
+
+def is_single_sql_statement(sql):
+    """ Check if the given SQL is a single statement or not
+
+    @param sql: SQL
+    @returns: True if the SQL is a single statement, false if not
+    """
+    return len(sqlparse.split(sql)) <= 1

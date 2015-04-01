@@ -1,7 +1,6 @@
 import re
-import ckanext.datastore.helpers as datastore_helpers
 from ckanext.datasolr.lib.solr import Solr
-from ckanext.datasolr.lib.helpers import parse_sort_statement, split_words
+from ckanext.datasolr.lib.helpers import is_single_sql_statement, split_words
 from importlib import import_module
 
 
@@ -193,7 +192,7 @@ class SolrQueryToSql(object):
             id_field=re.sub('"', '', self.id_field),
             order_statement=order_statement
         )
-        if not datastore_helpers.is_single_statement(sql):
+        if not is_single_sql_statement(sql):
             raise ValueError({
                 'query': ['Query is not a single statement.']
             })
