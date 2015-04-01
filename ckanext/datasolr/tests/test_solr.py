@@ -80,13 +80,13 @@ class TestSolr():
     def test_returned_row_count(self):
         """ Ensure the returned row count is the one provided by SOLR """
         r = self.solr.search(q='*:*')
-        assert_equals(3, r[0])
+        assert_equals(3, r['total'])
 
     def test_returned_rows(self):
         """ Ensure the returned rows are the ones returned by solr, using the
             default formatting. """
         r = self.solr.search(q='*:*')
-        assert_equals(['-a-', '~b~', '*c*'], r[1])
+        assert_equals(['-a-', '~b~', '*c*'], r['docs'])
 
 
     def test_custom_result_formatter(self):
@@ -100,4 +100,4 @@ class TestSolr():
             result_formatter=format_to_string
         )
         r = solr.search(q='*:*')
-        assert_equals('-a-,~b~,*c*', r[1])
+        assert_equals('-a-,~b~,*c*', r['docs'])

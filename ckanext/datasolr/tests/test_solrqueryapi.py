@@ -35,7 +35,17 @@ class MockSolr(object):
             rows = self.result_formatter(self.id_field, self.result_rows)
         else:
             rows = [r[self.id_field] for r in self.result_rows]
-        return self.result_row_count, rows
+        return {
+            'total': self.result_row_count,
+            'docs': rows,
+            'stats': {
+                'stats_fields': {
+                    'field1': {
+                        'sum': 10
+                    }
+                }
+            }
+        }
 
 
 class TestApiQueryToSolr(object):
@@ -174,44 +184,44 @@ class TestSolrQueryResultToSql(object):
 
     def test_solr_row_count_returned(self):
         """ Ensure the row count provided by SOLR is returned """
-        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
-        assert_equals(total, 3)
+        results = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        assert_equals(3, results['total'])
 
     def test_sql_contains_id_match(self):
         """ Ensure that the returned SQL matches the ID against the defined values """
-        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
-        sql = re.sub('[ \n\r]', '', sql)
+        result = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', result['sql'])
         assert_in('"id_field"=ANY(VALUES(%s),(%s),(%s))', sql)
 
     def test_replacement_values(self):
         """ Test the replacement values are correct"""
-        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
-        assert_equals(['a', 'b', 'c'], values)
+        result = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        assert_equals(['a', 'b', 'c'], result['values'])
 
     def test_select_all_fields_by_default(self):
         """ Test all fields are selected by default """
-        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
-        sql = re.sub('[ \n\r]', '', sql)
+        result = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', result['sql'])
         assert_in('SELECT*FROM', sql)
 
     def test_select_given_fields(self):
         """ Test given fields are selected """
-        (total, sql, values) = self.solr_to_sql.fetch(
+        result = self.solr_to_sql.fetch(
             'aaa', solr_args={'q':'*:*'}, fields=['field1', 'field2']
         )
-        sql = re.sub('[ \n\r]', '', sql)
+        sql = re.sub('[ \n\r]', '', result['sql'])
         assert_in('SELECT"field1","field2"FROM', sql)
 
     def test_no_default_order(self):
         """ Test there is no order clause by default """
-        (total, sql, values) = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
-        sql = re.sub('[ \n\r]', '', sql)
+        result = self.solr_to_sql.fetch('aaa', solr_args={'q':'*:*'})
+        sql = re.sub('[ \n\r]', '', result['sql'])
         assert_not_in('order', sql.lower())
 
     def test_given_order(self):
         """ Test the given order is parsed and applied to the sql """
-        (total, sql, values) = self.solr_to_sql.fetch(
+        result = self.solr_to_sql.fetch(
             'aaa',  solr_args={'q':'*:*'}, sort=[('field1', 'ASC'), ('field2', 'DESC')]
         )
-        sql = re.sub('[ \n\r]', '', sql)
+        sql = re.sub('[ \n\r]', '', result['sql'])
         assert_in('ORDERBY"field1"ASC,"field2"DESC', sql)

@@ -63,7 +63,18 @@ class MockSolrQueryToSql(object):
 
     def fetch(self, **query):
         self.query = query
-        return 9000, 'sql-query',  (9,8,7)
+        return {
+            'total': 9000,
+            'sql': 'sql-query',
+            'values': (9,8,7),
+            'stats': {
+                'stats_fields': {
+                    'field1': {
+                        'sum': 10
+                    }
+                }
+            }
+        }
 
 
 class MockConnection(object):
@@ -169,7 +180,7 @@ class TestDatastoreSolrSearch(object):
         search.validate()
         result = search.fetch()
         expected = [
-            {'id': 'field1', 'type': 'type1'},
+            {'id': 'field1', 'type': 'type1', 'sum': 10},
             {'id': 'field2', 'type': 'type2'}
         ]
         assert_equals(len(expected), len(result['fields']))
@@ -306,3 +317,38 @@ class TestDatastoreSolrSearch(object):
         search.fetch()
         solr = _mock_solr[current_thread().ident]
         assert_equals(solr.query['fields'], ['field1', 'field2'])
+
+    def test_solr_field_stats_query_processed(self):
+        """ Ensure the field stats queries are passed on to solr """
+        search = DatastoreSolrSearch(
+             {},
+             {
+                 'resource_id': 'aaa',
+                 'solr_stats_fields': 'field1, field2'
+             },
+             self.config, self.connection)
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        search.fetch()
+        solr = _mock_solr[current_thread().ident]
+        assert_equals(solr.query['solr_args']['stats'], 'true')
+        assert_equals(solr.query['solr_args']['stats.field'], ['field1', 'field2'])
+
+    def test_solr_not_empty_search_applied(self):
+        """ Ensure the not empty search is applied """
+        search = DatastoreSolrSearch(
+             {},
+             {
+                 'resource_id': 'aaa',
+                 'filters': {
+                     '_solr_not_empty': ['field1', 'field2']
+                 }
+             },
+             self.config, self.connection)
+        search._check_access = Mock(return_value=True)
+        search.validate()
+        search.fetch()
+        solr = _mock_solr[current_thread().ident]
+        q = solr.query['solr_args']['q']
+        assert_in('field1:[* TO *]', q[0])
+        assert_in('field2:[* TO *]', q[0])

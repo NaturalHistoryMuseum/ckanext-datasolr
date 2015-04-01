@@ -54,6 +54,7 @@ class DatastoreSolrSearch(object):
         """
         # Validate and process input parameters
         schema = self.context.get('schema', dsschema.datastore_search_schema())
+        schema['solr_stats_fields'] = list(schema['fields'])
         self.params, errors = validate(self.params, schema, self.context)
         if errors:
             raise p.toolkit.ValidationError(errors)
@@ -72,6 +73,10 @@ class DatastoreSolrSearch(object):
             self.params['fields'] = datastore_helpers.get_list(self.params['fields'])
         else:
             self.params['fields'] = self.fields.keys()
+        if 'solr_stats_fields' in self.params:
+            self.params['solr_stats_fields'] = datastore_helpers.get_list(
+                self.params['solr_stats_fields']
+            )
         # Parse sort statement
         if 'sort' in self.params:
             self.params['sort'] = parse_sort_statement(self.params['sort'])
@@ -118,28 +123,54 @@ class DatastoreSolrSearch(object):
             )
         self.params['fields'] = solr_args['fields']
         del solr_args['fields']
-        (total, sql, replacements) = self.solr_to_sql.fetch(
+        results = self.solr_to_sql.fetch(
             resource_id=self.resource_id,
             solr_args=solr_args,
             fields=self.params['fields'],
             sort=self.params.get('sort', None)
         )
         records = self.connection.execute(
-            sql, replacements, row_formatter=self._format_row
+            results['sql'], results['values'], row_formatter=self._format_row
         )
-        # TODO: should we cache this?
+        api_field_list = self._get_response_field_list(results)
+        response = dict(self.original_params.items() + {
+            'fields': api_field_list,
+            'total': results['total'],
+            'records': records,
+            '_backend': 'datasolr'
+         }.items())
+        return response
+
+    def _get_response_field_list(self, results):
+        """ Generate the field list to return with the given response
+
+        @param results: Result as returned by solr to sql
+        @returns: A list of field definition
+        """
         if self.params.get('fields', False):
             api_field_list = []
             for f in self.params['fields']:
                 api_field_list.append({'id': f, 'type': self.fields[f]})
         else:
             api_field_list = [{'id': f, 'type': self.fields[f]} for f in self.fields]
-        return dict(self.original_params.items() + {
-            'fields': api_field_list,
-            'total': total,
-            'records': records,
-            '_backend': 'datasolr'
-         }.items())
+        if results['stats'] and 'stats_fields' in results['stats']:
+            rev_map = dict([(self.api_to_solr.field_mapper(f), f) for f in self.fields])
+            for stat_field in results['stats']['stats_fields']:
+                source_field = rev_map[stat_field]
+                field_def = {
+                    'id': source_field,
+                    'type': self.fields[source_field]
+                }
+                try:
+                    index = api_field_list.index(field_def)
+                except ValueError:
+                    api_field_list.append(field_def)
+                    index = len(api_field_list) - 1
+                api_field_list[index] = dict(
+                    api_field_list[index].items()
+                    + results['stats']['stats_fields'][stat_field].items()
+                )
+        return api_field_list
 
     def _format_row(self, row):
         """ Format a row of results

@@ -7,6 +7,9 @@ from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.logic.action import datastore_solr_search
 
 
+SOLR_NOT_EMPTY_FILTER = '_solr_not_empty'
+
+
 class DataSolrException(Exception):
     pass
 
@@ -83,7 +86,13 @@ class DataSolrPlugin(p.SingletonPlugin):
         """
         # Validate field list
         if 'fields' in data_dict:
-            data_dict['fields'] = list(set(data_dict['fields']) - set(field_types.keys()))
+            data_dict['fields'] = list(
+                set(data_dict['fields']) - set(field_types.keys())
+            )
+        if 'solr_stats_fields' in data_dict:
+            data_dict['solr_stats_fields'] = list(
+                set(data_dict['solr_stats_fields']) - set(field_types.keys())
+            )
         # Validate sort
         val_sort = []
         for field, sort_order in data_dict.get('sort', []):
@@ -95,6 +104,8 @@ class DataSolrPlugin(p.SingletonPlugin):
             data_dict.get('q', None),
             data_dict.get('filters', {})
         )
+        if '_solr_not_empty' in filters:
+            del filters['_solr_not_empty']
         if q:
             data_dict['q'] = q
         elif 'q' in data_dict:
@@ -133,4 +144,16 @@ class DataSolrPlugin(p.SingletonPlugin):
             sort=data_dict.get('sort', None),
             distinct=data_dict.get('distinct', False)
         )
-        return dict(query_dict.items() + solr_args.items())
+        query_dict = dict(query_dict.items() + solr_args.items())
+        # Add field statistics
+        if 'solr_stats_fields' in data_dict:
+            query_dict['stats'] = 'true'
+            query_dict['stats.field'] = [
+                api_to_solr.field_mapper(f) for f in data_dict['solr_stats_fields']
+            ]
+        # Add 'not empty' query
+        if 'filters' in data_dict and SOLR_NOT_EMPTY_FILTER in data_dict['filters']:
+            for field in data_dict['filters'][SOLR_NOT_EMPTY_FILTER]:
+                query_dict['q'][0].append('{}:[* TO *]'.format(api_to_solr.field_mapper(field)))
+        return query_dict
+         

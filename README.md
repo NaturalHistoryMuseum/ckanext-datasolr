@@ -19,6 +19,11 @@ Differences with datastore_search
 - `datastore_search` allows for PostgreSQL full text query syntax. *datasolr* does not, and does not attempt to parse the PostgreSQL syntax into Solr queries (with the exception of field full text search prefix - see below);
 - *datasolr* implements full text search on specific fields differently than the datastore does. While the `q` parameter passed to [datastore_search](http://docs.ckan.org/en/ckan-2.2/datastore.html#ckanext.datastore.logic.action.datastore_search) is typically a full text search string, it can also be a dictionary of field to values - the idea being to implement full text search on individual fields. *datasolr* does not implement this as a full text search, but as a wildcard search instead. Optional PostgreSQL full text query syntax prefix component `:*` is stripped from field full text searches.
 
+*datasolr* also provides some extra features:
+
+- It is possible to get Solr stats on given fields (min, max, sum, etc. over the given query), by adding `solr_stats_fields` as a request parameter, which lists the fields to fetch statistics for. The statistics are added to the field definition object in `fields`;
+- The special filter `_solr_not_empty`, which expects a list of fields, will ensure the given fields are not empty.
+
 Usage
 -----
 

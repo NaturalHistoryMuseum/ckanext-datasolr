@@ -170,7 +170,12 @@ class SolrQueryToSql(object):
         @param sort: Sort expression as a list of tuples
                      (eg. [('field1', 'ASC'), ('field2', 'DESC')])
 
-        @returns: A tuple (total number of records, sql query, sql values)
+        @returns: A dictionary {
+            'total': Total number of records,
+            'sql': Sql query,
+            'values': Sql replacement values,
+            'stats': Solr stats if any were requested, or None
+        }
         """
         # Prepare the field list and order statement
         field_list = '*'
@@ -186,7 +191,7 @@ class SolrQueryToSql(object):
             )
         results = self.solr.search(**solr_args)
         # Format the query
-        sql = results[1][0].format(
+        sql = results['docs'][0].format(
             field_list=field_list,
             resource_id=re.sub('[^-a-fA-F0-9]', '', resource_id),
             id_field=re.sub('"', '', self.id_field),
@@ -196,7 +201,12 @@ class SolrQueryToSql(object):
             raise ValueError({
                 'query': ['Query is not a single statement.']
             })
-        return results[0], sql,  results[1][1]
+        return {
+            'total': results['total'],
+            'sql': sql,
+            'values': results['docs'][1],
+            'stats': results['stats']
+        }
 
     def _solr_formatter(self, solr_id_field, documents):
         """ Formatter used to transform a solr result set into an SQL query

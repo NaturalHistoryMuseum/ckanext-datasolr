@@ -67,8 +67,13 @@ class Solr(object):
           joined with the defined query type operator ('AND' or 'OR')
           before the replacement are inserted.
 
-        @returns: (number of results, formatted result) tuple. By default
-            the formatted result is a list of ids.
+        @returns: A dictionary defining {
+                'total': Number of results (without paging)
+                'docs': formatted result
+                'stats': Statistics if any was requested, or None
+            }
+
+            By default the formatted result is a list of ids.
         """
         query['wt'] = 'json'
         query['fl'] = self.id_field
@@ -77,7 +82,7 @@ class Solr(object):
             if not isinstance(base, basestring):
                 base = self.query_type.join(base)
             query['q'] = base.format(*[self.escape(t) for t in query['q'][1]])
-        resp = urllib2.urlopen(self.search_url + '?' + urllib.urlencode(query))
+        resp = urllib2.urlopen(self.search_url + '?' + urllib.urlencode(query, True))
         data = json.loads(resp.read())
         resp.close()
         result_count = data['response']['numFound']
@@ -89,7 +94,14 @@ class Solr(object):
         else:
             result_list = self.result_formatter(self.id_field,
                                                 data['response']['docs'])
-        return result_count, result_list
+        stats = None
+        if 'stats' in data:
+            stats = data['stats']
+        return {
+            'total': result_count,
+            'docs': result_list,
+            'stats': stats
+        }
 
     def escape(self, q):
         """ Escape a query term for solr searches
