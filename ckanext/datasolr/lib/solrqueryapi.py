@@ -205,7 +205,8 @@ class SolrQueryToSql(object):
             'total': results['total'],
             'sql': sql,
             'values': results['docs'][1],
-            'stats': results['stats']
+            'stats': results['stats'],
+            'next_cursor': results['next_cursor']
         }
 
     def _solr_formatter(self, solr_id_field, documents):

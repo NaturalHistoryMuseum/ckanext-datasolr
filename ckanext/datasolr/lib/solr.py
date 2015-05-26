@@ -97,10 +97,12 @@ class Solr(object):
         stats = None
         if 'stats' in data:
             stats = data['stats']
+        next_cursor = data['nextCursorMark'] if 'nextCursorMark' in data else None
         return {
             'total': result_count,
             'docs': result_list,
-            'stats': stats
+            'stats': stats,
+            'next_cursor': next_cursor
         }
 
     def escape(self, q):

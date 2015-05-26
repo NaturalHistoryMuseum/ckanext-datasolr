@@ -1,6 +1,6 @@
 import ckan.plugins as p
 import ckanext.datastore.helpers as datastore_helpers
-import ckanext.datastore.logic.schema as dsschema
+from ckanext.datasolr.logic.schema import datastore_search_schema
 import copy
 
 from ckan.lib.navl.dictization_functions import validate
@@ -53,7 +53,7 @@ class DatastoreSolrSearch(object):
         @raises ObjectNotFound: If the resource is not found
         """
         # Validate and process input parameters
-        schema = self.context.get('schema', dsschema.datastore_search_schema())
+        schema = self.context.get('schema', datastore_search_schema())
         schema['solr_stats_fields'] = list(schema['fields'])
         self.params, errors = validate(self.params, schema, self.context)
         if errors:
@@ -139,6 +139,8 @@ class DatastoreSolrSearch(object):
             'records': records,
             '_backend': 'datasolr'
          }.items())
+        if results['next_cursor']:
+            response['next_cursor'] = results['next_cursor']
         return response
 
     def _get_response_field_list(self, results):

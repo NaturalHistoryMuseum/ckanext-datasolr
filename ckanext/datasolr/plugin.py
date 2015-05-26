@@ -75,6 +75,14 @@ class DataSolrPlugin(p.SingletonPlugin):
                 logic_function='datastore_solr_search',
                 ver=u'/3'
             )
+            map.connect(
+                'datasolr',
+                '/api/action/datastore_search',
+                controller='api',
+                action='action',
+                logic_function='datastore_solr_search',
+                # ver=u'/3'
+            )
         return map
 
     # IDataSolr
@@ -117,6 +125,9 @@ class DataSolrPlugin(p.SingletonPlugin):
         # Validate distinct query
         if 'distinct' in data_dict:
             del data_dict['distinct']
+        # Validate cursor query
+        if 'cursor' in data_dict:
+            del data_dict['cursor']
         # Validate offset & limit
         if 'offset' in data_dict:
             try:
@@ -135,15 +146,28 @@ class DataSolrPlugin(p.SingletonPlugin):
     def datasolr_search(self, context, data_dict, field_types, query_dict):
         """ Build the solr search """
         api_to_solr = context['api_to_solr']
-        solr_args = api_to_solr.build_query(
-            resource_id=data_dict['resource_id'],
-            q=data_dict.get('q', None),
-            filters=data_dict.get('filters', None),
-            offset=data_dict.get('offset', 0),
-            limit=data_dict.get('limit', 100),
-            sort=data_dict.get('sort', None),
-            distinct=data_dict.get('distinct', False)
-        )
+
+        query_params = {
+            'resource_id': data_dict['resource_id'],
+            'q': data_dict.get('q', None),
+            'filters': data_dict.get('filters', None),
+            'limit': data_dict.get('limit', 100),
+            'distinct': data_dict.get('distinct', False)
+        }
+        cursor = data_dict.get('cursor', None)
+        if cursor:
+            # Must be sorted on a primary key
+            # FIXME: This shouldn't be hard coded? How can we find the primary ID?
+            query_params['sort'] = [('occurrenceID', 'ASC')]
+        else:
+             # If we've specified a paging cursor, then we don't want to use the offset
+            query_params['offset'] = data_dict.get('offset', 0)
+
+        solr_args = api_to_solr.build_query(**query_params)
+
+        if cursor:
+            solr_args['cursorMark'] = cursor
+
         query_dict = dict(query_dict.items() + solr_args.items())
         # Add field statistics
         if 'solr_stats_fields' in data_dict:
@@ -156,4 +180,3 @@ class DataSolrPlugin(p.SingletonPlugin):
             for field in data_dict['filters'][SOLR_NOT_EMPTY_FILTER]:
                 query_dict['q'][0].append('{}:[* TO *]'.format(api_to_solr.field_mapper(field)))
         return query_dict
-         
