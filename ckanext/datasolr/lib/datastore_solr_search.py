@@ -168,10 +168,12 @@ class DatastoreSolrSearch(object):
                 except ValueError:
                     api_field_list.append(field_def)
                     index = len(api_field_list) - 1
-                api_field_list[index] = dict(
-                    api_field_list[index].items()
-                    + results['stats']['stats_fields'][stat_field].items()
-                )
+                field_list_items = api_field_list[index].items()
+                try:
+                    field_list_items += results['stats']['stats_fields'][stat_field].items()
+                except AttributeError:
+                    pass
+                api_field_list[index] = dict(field_list_items)
         return api_field_list
 
     def _format_row(self, row):
