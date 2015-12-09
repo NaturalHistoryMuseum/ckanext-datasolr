@@ -190,10 +190,18 @@ class SolrQueryToSql(object):
                 ', '.join('"{}" {}'.format(f,o) for f, o in sort_s)
             )
         results = self.solr.search(**solr_args)
+        resource_id = re.sub('[^-a-fA-F0-9]', '', resource_id)
+
+        # Awful hack!!!! But only until we switch to elastic search
+        resource_id = '{resource_id}" LEFT JOIN gbif.occurrence g ON g."gbifOccurrenceID" = "{resource_id}"."occurrenceID'.format(
+            resource_id=resource_id
+        )
+        field_list += ', g."gbifIssue" as dqi, g."gbifID" as _gbif_id'
+
         # Format the query
         sql = results['docs'][0].format(
             field_list=field_list,
-            resource_id=re.sub('[^-a-fA-F0-9]', '', resource_id),
+            resource_id=resource_id,
             id_field=re.sub('"', '', self.id_field),
             order_statement=order_statement
         )

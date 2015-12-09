@@ -6,6 +6,7 @@ from ckanext.datasolr.config import config
 from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.logic.action import datastore_solr_search
 
+from ckanext.datasolr import DQI_FIELDS
 
 SOLR_NOT_EMPTY_FILTER = '_solr_not_empty'
 
@@ -102,11 +103,15 @@ class DataSolrPlugin(p.SingletonPlugin):
                 set(data_dict['solr_stats_fields']) - set(field_types.keys())
             )
         # Validate sort
+        for dqi_field in DQI_FIELDS.values():
+            field_types[dqi_field['alias']] = dqi_field['type']
+
         val_sort = []
         for field, sort_order in data_dict.get('sort', []):
             if field not in field_types:
                 val_sort.append((field, sort_order))
         data_dict['sort'] = val_sort
+        del data_dict['sort']
         # Validate q/filters using api_to_solr
         q, filters = context['api_to_solr'].validate(
             data_dict.get('q', None),
@@ -141,6 +146,7 @@ class DataSolrPlugin(p.SingletonPlugin):
                 del data_dict['limit']
             except ValueError:
                 pass
+
         return data_dict
 
     def datasolr_search(self, context, data_dict, field_types, query_dict):
@@ -154,6 +160,7 @@ class DataSolrPlugin(p.SingletonPlugin):
             'limit': data_dict.get('limit', 100),
             'distinct': data_dict.get('distinct', False)
         }
+
         cursor = data_dict.get('cursor', None)
         if cursor:
             # Must be sorted on a primary key

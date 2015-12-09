@@ -9,6 +9,7 @@ from ckanext.datasolr.lib.helpers import parse_sort_statement
 from ckanext.datasolr.lib.solrqueryapi import ApiQueryToSolr, SolrQueryToSql
 from ckanext.datasolr.interfaces import IDataSolr
 
+from ckanext.datasolr import DQI_FIELDS
 
 class DatastoreSolrSearch(object):
     """ Class used to implement the datastore_solr_search action
@@ -133,6 +134,10 @@ class DatastoreSolrSearch(object):
             results['sql'], results['values'], row_formatter=self._format_row
         )
         api_field_list = self._get_response_field_list(results)
+
+        for dqi_field in DQI_FIELDS.values():
+            api_field_list.append({'type': dqi_field['type'], 'id': dqi_field['alias']})
+
         response = dict(self.original_params.items() + {
             'fields': api_field_list,
             'total': results['total'],
@@ -186,4 +191,7 @@ class DatastoreSolrSearch(object):
             result[field] = self.connection.convert(
                 row[field], self.fields[field]
             )
+        # Add additional DQI fields
+        for dqi_field in DQI_FIELDS.values():
+            result[dqi_field['alias']] = row[dqi_field['alias']]
         return result
