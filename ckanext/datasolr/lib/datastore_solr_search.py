@@ -135,8 +135,9 @@ class DatastoreSolrSearch(object):
         )
         api_field_list = self._get_response_field_list(results)
 
-        for dqi_field in DQI_FIELDS.values():
-            api_field_list.append({'type': dqi_field['type'], 'id': dqi_field['alias']})
+        # Add additional DQI fields
+        for field_name, field_type in DQI_FIELDS.items():
+            api_field_list.append({'type': field_type, 'id': field_name})
 
         response = dict(self.original_params.items() + {
             'fields': api_field_list,
@@ -192,6 +193,6 @@ class DatastoreSolrSearch(object):
                 row[field], self.fields[field]
             )
         # Add additional DQI fields
-        for dqi_field in DQI_FIELDS.values():
-            result[dqi_field['alias']] = row[dqi_field['alias']]
+        for field_name in DQI_FIELDS.keys():
+            result[field_name] = row[field_name]
         return result

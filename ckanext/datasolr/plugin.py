@@ -102,9 +102,12 @@ class DataSolrPlugin(p.SingletonPlugin):
             data_dict['solr_stats_fields'] = list(
                 set(data_dict['solr_stats_fields']) - set(field_types.keys())
             )
+
+        del data_dict['fields']
+        # print data_dict
         # Validate sort
-        for dqi_field in DQI_FIELDS.values():
-            field_types[dqi_field['alias']] = dqi_field['type']
+        for field_name, field_type in DQI_FIELDS.items():
+            field_types[field_name] = field_type
 
         val_sort = []
         for field, sort_order in data_dict.get('sort', []):
@@ -146,6 +149,14 @@ class DataSolrPlugin(p.SingletonPlugin):
                 del data_dict['limit']
             except ValueError:
                 pass
+
+        # Remove the DQI fields
+        if '__extras' in data_dict:
+            for field_name in DQI_FIELDS.keys():
+                try:
+                    del data_dict['__extras'][field_name]
+                except KeyError:
+                    continue
 
         return data_dict
 
