@@ -63,7 +63,12 @@ class Connection(object):
         @param value: The value to convert
         @param field_type: The type
         """
-        return db.convert(value, field_type)
+
+        try:
+            return db.convert(value, field_type)
+        except UnicodeDecodeError:
+            print(value)
+            return ''
 
     def execute(self, sql, replacements, row_formatter=None):
         """ Executes an sql query
