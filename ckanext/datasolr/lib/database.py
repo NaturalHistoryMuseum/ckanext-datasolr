@@ -67,7 +67,6 @@ class Connection(object):
         try:
             return db.convert(value, field_type)
         except UnicodeDecodeError:
-            print(value)
             return ''
 
     def execute(self, sql, replacements, row_formatter=None):
