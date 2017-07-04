@@ -1,5 +1,7 @@
 import re
+import pylons
 from ckanext.datasolr.lib.solr import Solr
+from ckan.plugins.core import get_plugin
 from ckanext.datasolr.lib.helpers import is_single_sql_statement, split_words
 from importlib import import_module
 
@@ -193,10 +195,12 @@ class SolrQueryToSql(object):
         resource_id = re.sub('[^-a-fA-F0-9]', '', resource_id)
 
         # Awful hack!!!! But only until we switch to elastic search
-        resource_id = '{resource_id}" LEFT JOIN gbif.occurrence ON "gbifOccurrenceID" = "occurrenceID'.format(
-            resource_id=resource_id
-        )
-        field_list += ', "gbifIssue", "gbifID"'
+        # Check that we have the GBIF plugin enabled before adding the join
+        if get_plugin('gbif'):
+            resource_id = '{resource_id}" LEFT JOIN gbif.occurrence ON "gbifOccurrenceID" = "occurrenceID'.format(
+                resource_id=resource_id
+            )
+            field_list += ', "gbifIssue", "gbifID"'
 
         # Format the query
         sql = results['docs'][0].format(
