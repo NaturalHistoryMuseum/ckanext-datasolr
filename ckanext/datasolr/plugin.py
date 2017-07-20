@@ -176,7 +176,7 @@ class DataSolrPlugin(p.SingletonPlugin):
         if cursor:
             # Must be sorted on a primary key
             # FIXME: This shouldn't be hard coded? How can we find the primary ID?
-            query_params['sort'] = [('occurrenceID', 'ASC')]
+            query_params['sort'] = [('_id', 'ASC')]
         else:
              # If we've specified a paging cursor, then we don't want to use the offset
             query_params['offset'] = data_dict.get('offset', 0)
