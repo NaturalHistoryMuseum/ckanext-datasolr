@@ -82,6 +82,8 @@ class Solr(object):
             if not isinstance(base, basestring):
                 base = self.query_type.join(base)
             query['q'] = base.format(*[self.escape(t) for t in query['q'][1]])
+        print(self.search_url + '?' + urllib.urlencode(query, True))
+        print('HERE')
         resp = urllib2.urlopen(self.search_url + '?' + urllib.urlencode(query, True))
         data = json.loads(resp.read())
         resp.close()
