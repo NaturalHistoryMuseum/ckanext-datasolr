@@ -1,3 +1,4 @@
+import solr
 import ckan.plugins as p
 import ckanext.datastore.helpers as datastore_helpers
 from ckanext.datasolr.logic.schema import datastore_search_schema
@@ -11,6 +12,7 @@ from ckanext.datasolr.interfaces import IDataSolr
 
 from ckanext.datasolr import DQI_FIELDS
 
+
 class DatastoreSolrSearch(object):
     """ Class used to implement the datastore_solr_search action
 
@@ -20,6 +22,7 @@ class DatastoreSolrSearch(object):
     @param connection: Database connection object
         (ckanext.datasolr.lib.db.Connection)
     """
+
     def __init__(self, context, params, config, connection):
         self.context = context
         self.config = config
@@ -55,6 +58,7 @@ class DatastoreSolrSearch(object):
         """
         # Validate and process input parameters
         schema = self.context.get('schema', datastore_search_schema())
+
         schema['solr_stats_fields'] = list(schema['fields'])
         self.params, errors = validate(self.params, schema, self.context)
         if errors:
@@ -144,7 +148,7 @@ class DatastoreSolrSearch(object):
             'total': results['total'],
             'records': records,
             '_backend': 'datasolr'
-         }.items())
+        }.items())
         if results['next_cursor']:
             response['next_cursor'] = results['next_cursor']
         return response

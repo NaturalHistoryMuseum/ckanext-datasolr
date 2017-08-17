@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 
-with open('ckanext/datasolr/version.py') as f:
-    exec(f.read())
+__version__ = '1.0'
 
 setup(
     name='ckanext-datasolr',

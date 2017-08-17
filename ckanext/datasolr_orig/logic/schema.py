@@ -23,6 +23,5 @@ def datastore_search_schema():
     schema = ckan_datastore_search_schema()
     # Optional SOLR cursor parameter
     schema['cursor'] = [ignore_missing]
-    # Optional facets parameter
-    schema['facets'] = [ignore_missing]
+
     return schema
