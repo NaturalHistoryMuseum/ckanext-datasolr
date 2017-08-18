@@ -8,7 +8,7 @@ import ckan.lib.base as base
 # from ckanext.datastore import db
 from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
 
-from ckanext.datasolr.lib.config import is_datasolr_resource
+from ckanext.datasolr.lib.helpers import is_datasolr_resource
 from ckanext.datasolr.lib.solr_search import SolrSearch
 
 render = base.render
@@ -84,6 +84,7 @@ def datastore_search(context, data_dict):
     :type records: list of dictionaries
 
     '''
+
     resource_id = _get_or_bust(data_dict, 'resource_id')
 
     # If this isn't a datasolr resource (we've hijacked all datastore

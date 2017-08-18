@@ -2,13 +2,14 @@ import ckan.plugins as p
 from pylons import config
 import re
 
-
 from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.logic.action import datastore_search
+from ckanext.datasolr.lib.helpers import is_datasolr_resource
 
 
 class DataSolrPlugin(p.SingletonPlugin):
     p.implements(p.interfaces.IActions)
+    p.implements(p.ITemplateHelpers, inherit=True)
     p.implements(p.IRoutes, inherit=True)
     p.implements(IDataSolr)
 
@@ -16,6 +17,12 @@ class DataSolrPlugin(p.SingletonPlugin):
     def get_actions(self):
         return {
             'datastore_search': datastore_search
+        }
+
+    # ITemplateHelpers
+    def get_helpers(self):
+        return {
+            'is_datasolr_resource': is_datasolr_resource
         }
 
     # IDataSolr
@@ -32,21 +39,20 @@ class DataSolrPlugin(p.SingletonPlugin):
                 set(data_dict['fields']) - set(field_names)
             )
 
-        invalid_sort = []
-        sort = data_dict.get('sort', None)
+        sort = data_dict.get('sort', [])
         # FIXME: Can be an array at this point??
-        if sort:
-            # If sort field does not exist in the field list
-            # Add it back to the sort as invalid to fail
-            if sort not in field_names:
-                invalid_sort.append(sort)
-        data_dict['sort'] = invalid_sort
+        # Ensure sort is a list
+        sort = [sort] if not isinstance(sort, list) else sort
+        # Remove all sorts that are valid field names - the remainder
+        # Are invalid fields
+        data_dict['sort'] = list(set(sort) - set(field_names))
 
-        print('FILTERSSS')
-        print(data_dict.get('filters', {}))
+        # Remove all filters that are valid field names
+        filters = data_dict.get('filters', {})
+        data_dict['filters'] = list(set(filters.keys()) - set(field_names))
 
         # Remove all the known fields
-        for field in ['q', 'filters', 'distinct', 'cursor', 'facets']:
+        for field in ['q', 'distinct', 'cursor', 'facets']:
             data_dict.pop(field, None)
 
         # Validate offset & limit as integers
@@ -82,7 +88,7 @@ class DataSolrPlugin(p.SingletonPlugin):
             # TODO: We could get the primary field from the solr schema lookup
             query_params['sort'] = [('_id', 'ASC')]
         else:
-             # If we've specified a paging cursor, then we don't want to use the offset
+            # If we've specified a paging cursor, then we don't want to use the offset
             query_params['offset'] = data_dict.get('offset', 0)
 
         return query_params

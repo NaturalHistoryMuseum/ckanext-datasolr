@@ -45,6 +45,7 @@ class SolrSearch(object):
             data_dict = plugin.datasolr_validate(
                 self.context, data_dict, self.fields
             )
+
         for key, values in data_dict.items():
             if key in ['resource_id'] or not values:
                 continue
@@ -126,6 +127,9 @@ class SolrSearch(object):
 
         # Add facets
         facets = params.get('facets', False)
+
+        print(facets)
+
         if facets:
             solr_params['facet'] = 'true'
             solr_params['facet_field'] = facets

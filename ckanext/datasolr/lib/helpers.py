@@ -1,6 +1,8 @@
 import re
 import sqlparse
 
+from ckanext.datasolr.lib.config import get_datasolr_resources
+
 
 def split_words(phrase, quotes=True):
     """ Split a phrase into words
@@ -23,10 +25,10 @@ def split_words(phrase, quotes=True):
         removed. If False, quotes are ignored.
     """
     if not quotes:
-       return [w for w in phrase.split(' ') if w]
+        return [w for w in phrase.split(' ') if w]
     else:
         nb_q = len(re.sub('[^"]', '', phrase))
-        if nb_q%2 == 1:
+        if nb_q % 2 == 1:
             phrase += '"'
         parts = re.split(' (?=(?:[^"]|"[^"]*")*$)', phrase)
         words = []
@@ -41,4 +43,10 @@ def split_words(phrase, quotes=True):
         return words
 
 
-
+def is_datasolr_resource(resource_id):
+    """
+    Is a solr resource id in the list of datasolr resources
+    @param resource_id:
+    @return:
+    """
+    return resource_id in get_datasolr_resources()

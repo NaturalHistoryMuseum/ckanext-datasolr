@@ -12,10 +12,4 @@ def get_datasolr_resources():
             for k in pylons.config.keys() if config_key in k}
 
 
-def is_datasolr_resource(resource_id):
-    """
-    Is a solr resource id in the list of datasolr resources
-    @param resource_id:
-    @return:
-    """
-    return resource_id in get_datasolr_resources()
+
