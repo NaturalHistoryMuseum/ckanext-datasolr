@@ -72,6 +72,7 @@ class SolrSearch(object):
             )
 
         search_params = {}
+        print(self.params)
 
         for plugin in PluginImplementations(IDataSolr):
             search_params = plugin.datasolr_search(
@@ -126,7 +127,7 @@ class SolrSearch(object):
             solr_params['group_main'] = 'true'
 
         # Add facets
-        facets = params.get('facets', False)
+        facets = params.get('facets', [])
 
         print(facets)
 

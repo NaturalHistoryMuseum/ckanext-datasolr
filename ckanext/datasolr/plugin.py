@@ -81,7 +81,6 @@ class DataSolrPlugin(p.SingletonPlugin):
             distinct=data_dict.get('distinct', False)
         )
         query_params['fields'] = data_dict.get('fields', [f['id'] for f in fields])
-
         cursor = data_dict.get('cursor', None)
         if cursor:
             # Must be sorted on primary key
