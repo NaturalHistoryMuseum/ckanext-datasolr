@@ -72,14 +72,12 @@ class SolrSearch(object):
             )
 
         search_params = {}
-        print(self.params)
-
         for plugin in PluginImplementations(IDataSolr):
             search_params = plugin.datasolr_search(
                 self.context, self.params, self.fields, search_params
             )
-
         solr_query, solr_params = self.build_query(search_params)
+
         search = self.conn.query(solr_query, **solr_params)
 
         # If user has limited list of fields, then limit the schema definition
@@ -89,6 +87,7 @@ class SolrSearch(object):
             fields = self.fields
 
         total = len(search.results) if 'group_field' in solr_params else search.numFound
+
         response = dict(
             resource_id=self.resource_id,
             fields=fields,
@@ -129,12 +128,17 @@ class SolrSearch(object):
         # Add facets
         facets = params.get('facets', [])
 
-        print(facets)
-
         if facets:
             solr_params['facet'] = 'true'
             solr_params['facet_field'] = facets
-            solr_params['facet_limit'] = 20
+            solr_params['facet_limit'] = params.get('facets_limit', 20),
+            solr_params['facet_mincount'] = 1
+            # Do we have individual facet field limits?
+            facets_field_limit = params.get('facets_field_limit')
+            if facets_field_limit:
+                for facet_field, limit in facets_field_limit.items():
+                    solr_param_key = 'f_%s_facet_limit' % facet_field
+                    solr_params[solr_param_key] = limit
 
         # Ensure _id field is always selected first
         try:
@@ -150,6 +154,7 @@ class SolrSearch(object):
             words = split_words(q, quotes=True)
             for word in words:
                 solr_query.append('_fulltext:{}'.format(word))
+
         filters = params.get('filters', None)
         if filters:
             for filter_field, filter_values in filters.items():

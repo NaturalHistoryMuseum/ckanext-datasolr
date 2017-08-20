@@ -8,7 +8,6 @@ from ckanext.datasolr.lib.solr_connection import SolrConnection
 
 def main():
     conn = SolrConnection('http://10.11.20.12/solr/specimen_collection')
-    print(conn.schema())
 
     # query = {
     #     'wt': 'json'

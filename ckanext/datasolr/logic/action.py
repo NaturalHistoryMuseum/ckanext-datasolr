@@ -92,8 +92,6 @@ def datastore_search(context, data_dict):
     if not is_datasolr_resource(resource_id):
         return ckan_datastore_search(context, data_dict)
 
-
-
     solr_search = SolrSearch(resource_id, context, data_dict)
     solr_search.validate()
     return solr_search.fetch()
