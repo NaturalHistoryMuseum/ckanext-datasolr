@@ -45,7 +45,6 @@ class SolrSearch(object):
             data_dict = plugin.datasolr_validate(
                 self.context, data_dict, self.fields
             )
-
         for key, values in data_dict.items():
             if key in ['resource_id'] or not values:
                 continue
@@ -86,8 +85,10 @@ class SolrSearch(object):
         else:
             fields = self.fields
 
-        total = len(search.results) if 'group_field' in solr_params else search.numFound
-
+        # numFound isn't working with group fields, so auto-completes will
+        # constantly be called - if there's a group field, set total to zero
+        # if there's no records found - otherwise use numFound
+        total = 0 if 'group_field' and not search.results else search.numFound
         response = dict(
             resource_id=self.resource_id,
             fields=fields,
