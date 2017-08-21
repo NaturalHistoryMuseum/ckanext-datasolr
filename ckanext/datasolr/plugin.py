@@ -49,7 +49,8 @@ class DataSolrPlugin(p.SingletonPlugin):
 
         # Remove all filters that are valid field names
         filters = data_dict.get('filters', {})
-        data_dict['filters'] = list(set(filters.keys()) - set(field_names))
+        invalid_filter_fields = list(set(filters.keys()) - set(field_names))
+        data_dict['filters'] = {k: filters[k] for k in invalid_filter_fields}
 
         # Remove all facets_field_limit that are valid field names
         facets_field_limit = data_dict.get('facets_field_limit', {})
