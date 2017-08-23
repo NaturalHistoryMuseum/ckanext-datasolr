@@ -56,8 +56,16 @@ class DataSolrPlugin(p.SingletonPlugin):
         facets_field_limit = data_dict.get('facets_field_limit', {})
         data_dict['facets_field_limit'] = list(set(facets_field_limit.keys()) - set(field_names))
 
+        if data_dict.get('q'):
+            if isinstance(data_dict['q'], basestring):
+                data_dict['q'] = None
+            else:
+                for field in field_names:
+                    if field in data_dict['q']:
+                        del data_dict['q'][field]
+
         # Remove all the known fields
-        for field in ['q', 'distinct', 'cursor', 'facets', 'facets_limit']:
+        for field in ['distinct', 'cursor', 'facets', 'facets_limit']:
             data_dict.pop(field, None)
 
         # Validate offset & limit as integers
@@ -80,7 +88,7 @@ class DataSolrPlugin(p.SingletonPlugin):
         """ Build the solr search """
         query_params = dict(
             resource_id=data_dict['resource_id'],
-            q=data_dict.get('q', None),
+            q=data_dict.get('q', []),
             filters=data_dict.get('filters'),
             facets=data_dict.get('facets'),
             facets_limit=data_dict.get('facets_limit'),

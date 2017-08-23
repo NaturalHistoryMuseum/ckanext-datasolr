@@ -64,18 +64,12 @@ class SolrSearch(object):
         """ Run the query and fetch the data
         """
         self._check_access()
-        data_dict = copy.deepcopy(self.params)
-        for plugin in PluginImplementations(IDataSolr):
-            data_dict = plugin.datasolr_validate(
-                self.context, data_dict, self.fields
-            )
-
         search_params = {}
         for plugin in PluginImplementations(IDataSolr):
             search_params = plugin.datasolr_search(
                 self.context, self.params, self.fields, search_params
             )
-        solr_query, solr_params = self.build_query(search_params)
+        solr_query, solr_params = self.build_query(search_params, self.fields)
 
         search = self.conn.query(solr_query, **solr_params)
 
@@ -101,7 +95,7 @@ class SolrSearch(object):
 
         return response
 
-    def build_query(self, params):
+    def build_query(self, params, field_names):
         """ Build a solr query from API parameters
 
         @returns a dictionary defining SOLR request parameters
@@ -150,17 +144,30 @@ class SolrSearch(object):
             # Move _id field to the start
             solr_params['fields'].insert(0, solr_params['fields'].pop(id_idx))
 
+        # Q can be either a string, or a dictionary
         q = params.get('q', None)
-        if q:
+        if isinstance(q, basestring):
             words = split_words(q, quotes=True)
             for word in words:
                 solr_query.append('_fulltext:{}'.format(word))
+        elif q:
+            for field in q:
+                if field not in field_names:
+                    continue
+                solr_query.append('{}:*{}*'.format(field, q['field']))
 
         filters = params.get('filters', None)
         if filters:
+            filter_statements = params.get('filter_statements', {})
             for filter_field, filter_values in filters.items():
-                for filter_value in filter_values:
-                    solr_query.append('{}:"{}"'.format(filter_field, filter_value))
+                # If we have a special filter statement for this query - add it
+                #  e.g. _exclude_mineralogy =>  -collectionCode:MIN
+                # Otherwise just add it as a generic filter - {}:"{}"
+                try:
+                    solr_query.append(filter_statements[filter_field])
+                except KeyError:
+                    for filter_value in filter_values:
+                        solr_query.append('{}:"{}"'.format(filter_field, filter_value))
 
         # If we have no solr query, then search for everything
         if not solr_query:
