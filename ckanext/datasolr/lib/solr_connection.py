@@ -26,13 +26,14 @@ class SolrConnection(solr.SolrConnection):
         request = urllib.urlencode(query, doseq=True)
 
         selector = self.path + '/admin/luke'
+
         rsp = self._post(selector, request, self.form_headers)
         data = rsp.read()
         solr_schema = json.loads(data)
         fields = []
         for field_name, field in solr_schema['fields'].items():
             # Only include the fields that have been stored
-            if field['index'] != '(unstored field)' and field_name != '_version_':
+            if 'index' in field and field['index'] != '(unstored field)' and field_name != '_version_':
                 field_type = field['type'].replace('field_', '')
                 if field_type == 'string':
                     field_type = 'text'
