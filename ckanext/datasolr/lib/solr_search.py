@@ -90,6 +90,16 @@ class SolrSearch(object):
             records=search.results,
         )
 
+        # Date fields are returned as python datetime objects
+        # So need to be converted into a string
+        date_fields = [f['id'] for f in self.fields if f['type'] == 'date']
+        if date_fields:
+            for record in response['records']:
+                for date_field in date_fields:
+                    # TODO: This returns everything in one date (not time) format
+                    # Identify the date depth and format accordingly
+                    record[date_field] = record[date_field].strftime("%Y-%m-%d")
+
         if solr_params.get('facet_field'):
             response['facets'] = search.facet_counts
 
