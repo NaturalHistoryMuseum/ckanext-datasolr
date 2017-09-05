@@ -90,9 +90,11 @@ class SolrSearch(object):
             records=search.results,
         )
 
+        requested_fields = [f['id'] for f in fields]
+
         # Date fields are returned as python datetime objects
         # So need to be converted into a string
-        date_fields = [f['id'] for f in self.fields if f['type'] == 'date']
+        date_fields = [f['id'] for f in self.fields if f['type'] == 'date' and f['id'] in requested_fields]
         if date_fields:
             for record in response['records']:
                 for date_field in date_fields:
