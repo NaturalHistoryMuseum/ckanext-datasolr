@@ -32,8 +32,13 @@ class SolrConnection(solr.SolrConnection):
         solr_schema = json.loads(data)
         fields = []
         for field_name, field in solr_schema['fields'].items():
+
+            # Parse schema - ITS--------------. Third character denotes if field is stored
+            is_stored = field['schema'][2] == 'S'
+            is_indexed = field['schema'][0] == 'I'
+
             # Only include the fields that have been stored
-            if 'index' in field and field['index'] != '(unstored field)' and field_name != '_version_':
+            if is_stored and field_name != '_version_':
                 field_type = field['type'].replace('field_', '')
                 if field_type == 'string':
                     field_type = 'text'
@@ -41,6 +46,7 @@ class SolrConnection(solr.SolrConnection):
                 # Structure same as the datastore search
                 fields.append({
                     'id': field_name,
-                    'type': field_type
+                    'type': field_type,
+                    'indexed': is_indexed
                 })
         return fields
