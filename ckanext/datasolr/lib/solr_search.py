@@ -24,7 +24,9 @@ class SolrSearch(object):
         self.resource_id = resource_id
         datasolr_resources = get_datasolr_resources()
         self.conn = SolrConnection(datasolr_resources[resource_id])
-        self.fields = self.conn.fields()
+        # Flag to denote whether to only return fields which have been indexed
+        indexed_only = params.get('indexed_only', False)
+        self.fields = self.conn.fields(indexed_only=indexed_only)
 
     def _check_access(self):
         """ Ensure we have access to the defined resource """
@@ -107,7 +109,8 @@ class SolrSearch(object):
 
         return response
 
-    def build_query(self, params, field_names):
+    @staticmethod
+    def build_query(params, field_names):
         """ Build a solr query from API parameters
 
         @returns a dictionary defining SOLR request parameters

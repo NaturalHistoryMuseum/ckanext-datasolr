@@ -90,6 +90,9 @@ def datastore_search(context, data_dict):
     # If this isn't a datasolr resource (we've hijacked all datastore
     # searches at this point, reroute request to the real datastore search endpoint
     if not is_datasolr_resource(resource_id):
+        # Remove the indexed only flag
+        data_dict.pop("indexed_only", None)
+        # Pass request to the original datastore search
         return ckan_datastore_search(context, data_dict)
 
     solr_search = SolrSearch(resource_id, context, data_dict)

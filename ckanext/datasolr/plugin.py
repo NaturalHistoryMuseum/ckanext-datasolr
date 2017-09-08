@@ -65,7 +65,7 @@ class DataSolrPlugin(p.SingletonPlugin):
                         del data_dict['q'][field]
 
         # Remove all the known fields
-        for field in ['distinct', 'cursor', 'facets', 'facets_limit']:
+        for field in ['distinct', 'cursor', 'facets', 'facets_limit', 'indexed_only']:
             data_dict.pop(field, None)
 
         # Validate offset & limit as integers

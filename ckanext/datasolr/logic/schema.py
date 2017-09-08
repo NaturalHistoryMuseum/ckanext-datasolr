@@ -13,6 +13,7 @@ get_validator = p.toolkit.get_validator
 
 ignore_missing = get_validator('ignore_missing')
 int_validator = get_validator('int_validator')
+bool_validator = get_validator('boolean_validator')
 
 
 def datastore_search_schema():
@@ -29,4 +30,5 @@ def datastore_search_schema():
     # Optional number of facets to return
     schema['facets_limit'] = [ignore_missing, int_validator]
     schema['facets_field_limit'] = [ignore_missing, json_validator]
+    schema['indexed_only'] = [ignore_missing, bool_validator]
     return schema
