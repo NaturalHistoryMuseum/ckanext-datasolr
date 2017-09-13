@@ -25,10 +25,10 @@ class SolrSearch(object):
         datasolr_resources = get_datasolr_resources()
         self.conn = SolrConnection(datasolr_resources[resource_id])
         # Flag to denote whether to only return fields which have been indexed
-        # indexed_only = params.get('indexed_only', False)
-        # self.fields = self.conn.fields(indexed_only=indexed_only)
-        self.stored_fields = self.conn.fields(indexed_only=False)
-        self.indexed_fields = self.conn.fields(indexed_only=True)
+        # Used when we need to provide a list of filters
+        self.indexed_only = params.get('indexed_only', False)
+        self.indexed_fields = self.conn.indexed_fields()
+        self.stored_fields = self.conn.stored_fields()
 
     def _check_access(self):
         """ Ensure we have access to the defined resource """
@@ -45,9 +45,6 @@ class SolrSearch(object):
             self.params['fields'] = datastore_helpers.get_list(self.params['fields'])
 
         data_dict = copy.deepcopy(self.params)
-        print('INDEXED')
-        print(self.indexed_fields)
-        print('---')
         for plugin in PluginImplementations(IDataSolr):
             data_dict = plugin.datasolr_validate(
                 self.context, data_dict, self.indexed_fields
@@ -72,19 +69,20 @@ class SolrSearch(object):
         """
         self._check_access()
         search_params = {}
+
+        # When we perform the fetch, we want to use stored fields
         for plugin in PluginImplementations(IDataSolr):
             search_params = plugin.datasolr_search(
-                self.context, self.params, self.indexed_fields, search_params
+                self.context, self.params, self.stored_fields, search_params
             )
-        solr_query, solr_params = self.build_query(search_params, self.indexed_fields)
+        solr_query, solr_params = self.build_query(search_params, self.stored_fields)
 
         search = self.conn.query(solr_query, **solr_params)
 
-        # If user has limited list of fields, then limit the schema definition
-        if search_params.get('fields'):
-            fields = [f for f in self.stored_fields if f['id'] in search_params.get('fields')]
-        else:
-            fields = self.stored_fields
+        # If we have requested indexed only fields, then use indexed fields, but hiding
+        # and internal fields
+        fields = self.indexed_fields if self.indexed_only else self.stored_fields
+        fields = [f for f in fields if not f['id'].startswith('_')]
 
         # numFound isn't working with group fields, so auto-completes will
         # constantly be called - if there's a group field, set total to zero
