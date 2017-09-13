@@ -46,7 +46,6 @@ class DataSolrPlugin(p.SingletonPlugin):
         # Remove all sorts that are valid field names - the remainder
         # Are invalid fields
         data_dict['sort'] = list(set(sort) - set(field_names))
-
         # Remove all filters that are valid field names
         filters = data_dict.get('filters', {})
         invalid_filter_fields = list(set(filters.keys()) - set(field_names))

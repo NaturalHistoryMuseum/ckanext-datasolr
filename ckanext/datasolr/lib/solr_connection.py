@@ -15,6 +15,14 @@ class SolrConnection(solr.SolrConnection):
     Extend solr connection with a schema call
     """
     # TODO: Cache this?
+
+    _fields = []
+
+    def indexed_fields(self):
+
+    def stored_fields(self):
+
+
     def fields(self, indexed_only=False):
         """
         Return the SOLR index schema - performs a luke request

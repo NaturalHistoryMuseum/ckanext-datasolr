@@ -25,8 +25,10 @@ class SolrSearch(object):
         datasolr_resources = get_datasolr_resources()
         self.conn = SolrConnection(datasolr_resources[resource_id])
         # Flag to denote whether to only return fields which have been indexed
-        indexed_only = params.get('indexed_only', False)
-        self.fields = self.conn.fields(indexed_only=indexed_only)
+        # indexed_only = params.get('indexed_only', False)
+        # self.fields = self.conn.fields(indexed_only=indexed_only)
+        self.stored_fields = self.conn.fields(indexed_only=False)
+        self.indexed_fields = self.conn.fields(indexed_only=True)
 
     def _check_access(self):
         """ Ensure we have access to the defined resource """
@@ -43,9 +45,12 @@ class SolrSearch(object):
             self.params['fields'] = datastore_helpers.get_list(self.params['fields'])
 
         data_dict = copy.deepcopy(self.params)
+        print('INDEXED')
+        print(self.indexed_fields)
+        print('---')
         for plugin in PluginImplementations(IDataSolr):
             data_dict = plugin.datasolr_validate(
-                self.context, data_dict, self.fields
+                self.context, data_dict, self.indexed_fields
             )
         for key, values in data_dict.items():
             if key in ['resource_id'] or not values:
@@ -69,17 +74,17 @@ class SolrSearch(object):
         search_params = {}
         for plugin in PluginImplementations(IDataSolr):
             search_params = plugin.datasolr_search(
-                self.context, self.params, self.fields, search_params
+                self.context, self.params, self.indexed_fields, search_params
             )
-        solr_query, solr_params = self.build_query(search_params, self.fields)
+        solr_query, solr_params = self.build_query(search_params, self.indexed_fields)
 
         search = self.conn.query(solr_query, **solr_params)
 
         # If user has limited list of fields, then limit the schema definition
         if search_params.get('fields'):
-            fields = [f for f in self.fields if f['id'] in search_params.get('fields')]
+            fields = [f for f in self.stored_fields if f['id'] in search_params.get('fields')]
         else:
-            fields = self.fields
+            fields = self.stored_fields
 
         # numFound isn't working with group fields, so auto-completes will
         # constantly be called - if there's a group field, set total to zero
@@ -91,12 +96,10 @@ class SolrSearch(object):
             total=total,
             records=search.results,
         )
-
         requested_fields = [f['id'] for f in fields]
-
         # Date fields are returned as python datetime objects
         # So need to be converted into a string
-        date_fields = [f['id'] for f in self.fields if f['type'] == 'date' and f['id'] in requested_fields]
+        date_fields = [f['id'] for f in self.stored_fields if f['type'] == 'date' and f['id'] in requested_fields]
         if date_fields:
             for record in response['records']:
                 for date_field in date_fields:
@@ -181,6 +184,7 @@ class SolrSearch(object):
                 try:
                     solr_query.append(filter_statements[filter_field])
                 except KeyError:
+                    filter_values = [filter_values] if not isinstance(filter_values, list) else filter_values
                     for filter_value in filter_values:
                         solr_query.append('{}:"{}"'.format(filter_field, filter_value))
 
