@@ -104,8 +104,9 @@ class SolrSearch(object):
             for record in response['records']:
                 for date_field in date_fields:
                     # TODO: This returns everything in one date (not time) format
-                    # Identify the date depth and format accordingly
-                    record[date_field] = record[date_field].strftime("%Y-%m-%d")
+                    # TODO: Identify the date depth and format accordingly
+                    if date_field in record:
+                        record[date_field] = record[date_field].strftime("%Y-%m-%d")
 
         if solr_params.get('facet_field'):
             response['facets'] = search.facet_counts
