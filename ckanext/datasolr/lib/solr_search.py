@@ -79,10 +79,12 @@ class SolrSearch(object):
 
         search = self.conn.query(solr_query, **solr_params)
 
-        # If we have requested indexed only fields, then use indexed fields, but hiding
-        # and internal fields
+        # If we have requested indexed only fields, then list of fields will be
+        # those indexed; otherwise use the default stored fields
         fields = self.indexed_fields if self.indexed_only else self.stored_fields
-        fields = [f for f in fields if not f['id'].startswith('_')]
+
+        # Hide any internal fields - those starting with underscore (except for _id)
+        fields = [f for f in fields if not f['id'].startswith('_') or f['id'] == '_id']
 
         # numFound isn't working with group fields, so auto-completes will
         # constantly be called - if there's a group field, set total to zero
