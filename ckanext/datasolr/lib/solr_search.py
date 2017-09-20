@@ -45,10 +45,12 @@ class SolrSearch(object):
             self.params['fields'] = datastore_helpers.get_list(self.params['fields'])
 
         data_dict = copy.deepcopy(self.params)
+
         for plugin in PluginImplementations(IDataSolr):
             data_dict = plugin.datasolr_validate(
                 self.context, data_dict, self.indexed_fields
             )
+
         for key, values in data_dict.items():
             if key in ['resource_id'] or not values:
                 continue
@@ -154,7 +156,8 @@ class SolrSearch(object):
                     solr_param_key = 'f_%s_facet_limit' % facet_field
                     solr_params[solr_param_key] = limit
 
-        # Ensure _id field is always selected first
+        # Ensure _id field is always selected first - just in case fields isn't set
+        solr_params.setdefault('fields', [])
         try:
             id_idx = solr_params['fields'].index('_id')
         except ValueError:
