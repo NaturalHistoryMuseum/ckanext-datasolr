@@ -40,9 +40,10 @@ class DataSolrPlugin(p.SingletonPlugin):
             )
 
         sort = data_dict.get('sort', [])
-        # FIXME: Can be an array at this point??
         # Ensure sort is a list
         sort = [sort] if not isinstance(sort, list) else sort
+        # Before validating field name, replace asc/desc from
+        sort = [re.sub('\s(desc|asc)', '', s) for s in sort]
         # Remove all sorts that are valid field names - the remainder
         # Are invalid fields
         data_dict['sort'] = list(set(sort) - set(field_names))
@@ -93,6 +94,7 @@ class DataSolrPlugin(p.SingletonPlugin):
             facets_limit=data_dict.get('facets_limit'),
             facets_field_limit=data_dict.get('facets_field_limit'),
             limit=data_dict.get('limit', 100),
+            sort=data_dict.get('sort'),
             distinct=data_dict.get('distinct', False)
         )
         query_params['fields'] = data_dict.get('fields', [f['id'] for f in fields])

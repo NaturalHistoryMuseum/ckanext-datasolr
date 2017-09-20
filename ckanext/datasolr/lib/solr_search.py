@@ -134,6 +134,10 @@ class SolrSearch(object):
         offset = params.get('offset', None)
         if offset:
             solr_params['start'] = offset
+        # Add sort
+        sort = params.get('sort', None)
+        if sort:
+            solr_params['sort'] = sort
         # Add distinct
         distinct = params.get('distinct', False)
         if distinct and fields:
