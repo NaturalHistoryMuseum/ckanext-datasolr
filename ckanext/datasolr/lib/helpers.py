@@ -1,6 +1,8 @@
 import re
 import sqlparse
 
+from ckanext.datasolr.lib.config import get_datasolr_resources
+
 
 def split_words(phrase, quotes=True):
     """ Split a phrase into words
@@ -23,10 +25,10 @@ def split_words(phrase, quotes=True):
         removed. If False, quotes are ignored.
     """
     if not quotes:
-       return [w for w in phrase.split(' ') if w]
+        return [w for w in phrase.split(' ') if w]
     else:
         nb_q = len(re.sub('[^"]', '', phrase))
-        if nb_q%2 == 1:
+        if nb_q % 2 == 1:
             phrase += '"'
         parts = re.split(' (?=(?:[^"]|"[^"]*")*$)', phrase)
         words = []
@@ -40,42 +42,11 @@ def split_words(phrase, quotes=True):
                 words.append(w)
         return words
 
-def parse_sort_statement(sort):
-    """ Parse input sort statement
 
-    Parse a ckan API sort statement of the type "field1 ASC, field2, field3 DESC"
-    into a list of tupples [('field1', 'ASC'), ('field2', 'ASC'), ('field3', 'DESC')]
-    We assume the sort statement may contain double quotes around field
-    names (and field names may contain double quotes, which are escaped
-    by doubling them). The ckan api is not clear on this topic, but since
-    ckan field names are allowed to include commas, this seems logical.
-
-    Note that this will strip enclosing double quotes, but will not
-    apply the field mapper to field names.
-
-    @param sort: Sort statement
-    @returns: list of tuples [(field, 'ASC' or 'DESC'), ...]
+def is_datasolr_resource(resource_id):
     """
-    statements = re.split(',(?=(?:[^"]|"[^"]*")*$)', sort)
-    order_statements = []
-    for statement in statements:
-        statement = statement.strip()
-        m = re.search('^"?(.+?)"?(?:\s+(ASC|DESC))?$', statement, re.IGNORECASE)
-        if not m:
-            raise ValueError('Could not parse sort statement')
-        field = m.group(1)
-        if m.group(2):
-            order = m.group(2)
-        else:
-            order = 'ASC'
-        order_statements.append((field, order))
-    return order_statements
-
-
-def is_single_sql_statement(sql):
-    """ Check if the given SQL is a single statement or not
-
-    @param sql: SQL
-    @returns: True if the SQL is a single statement, false if not
+    Is a solr resource id in the list of datasolr resources
+    @param resource_id:
+    @return:
     """
-    return len(sqlparse.split(sql)) <= 1
+    return resource_id in get_datasolr_resources()

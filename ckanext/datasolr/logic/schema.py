@@ -5,13 +5,15 @@ Created by 'bens3' on 2013-06-21.
 Copyright (c) 2013 'bens3'. All rights reserved.
 """
 
-
 import ckan.plugins as p
 from ckanext.datastore.logic.schema import datastore_search_schema as ckan_datastore_search_schema
+from ckanext.datastore.logic.schema import list_of_strings_or_string, json_validator
 
 get_validator = p.toolkit.get_validator
 
 ignore_missing = get_validator('ignore_missing')
+int_validator = get_validator('int_validator')
+bool_validator = get_validator('boolean_validator')
 
 
 def datastore_search_schema():
@@ -23,5 +25,10 @@ def datastore_search_schema():
     schema = ckan_datastore_search_schema()
     # Optional SOLR cursor parameter
     schema['cursor'] = [ignore_missing]
-
+    # Optional facets parameter
+    schema['facets'] = [ignore_missing, list_of_strings_or_string]
+    # Optional number of facets to return
+    schema['facets_limit'] = [ignore_missing, int_validator]
+    schema['facets_field_limit'] = [ignore_missing, json_validator]
+    schema['indexed_only'] = [ignore_missing, bool_validator]
     return schema
