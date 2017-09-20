@@ -85,7 +85,7 @@ def datastore_search(context, data_dict):
 
     '''
 
-    resource_id = _get_or_bust(data_dict, 'resource_id')
+    resource_id = data_dict.get('resource_id')
 
     # If this isn't a datasolr resource (we've hijacked all datastore
     # searches at this point, reroute request to the real datastore search endpoint
