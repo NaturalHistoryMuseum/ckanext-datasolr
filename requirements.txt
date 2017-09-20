@@ -1,2 +1,1 @@
-ujson
-sqlparse
+solrpy==0.9.5
