@@ -14,13 +14,16 @@ class SolrConnection(solr.SolrConnection):
     """
     Extend solr connection with a schema call
     """
-    # TODO: Cache this?
 
-    _fields = []
+    # Field cache - keyed by connection URL to prevent clashes
+    _fields_cache = {}
 
     def fields(self):
         # If we haven't already populated the _fields list, build it
-        if not self._fields:
+        if not self._fields_cache.get(self.url, None):
+
+            self._fields_cache[self.url] = []
+
             query = {
                 'wt': 'json'
             }
@@ -43,14 +46,14 @@ class SolrConnection(solr.SolrConnection):
                     field_type = 'text'
 
                 # Structure same as the datastore search
-                self._fields.append({
+                self._fields_cache[self.url].append({
                     'id': field_name,
                     'type': field_type,
                     'indexed': is_indexed,
                     'stored': is_stored
                 })
 
-        return self._fields
+        return self._fields_cache[self.url]
 
     def indexed_fields(self):
         """
@@ -65,32 +68,3 @@ class SolrConnection(solr.SolrConnection):
         @return:
         """
         return [{'id': f['id'], 'type': f['type']} for f in self.fields() if f['stored']]
-
-
-    # def fields(self, indexed_only=False):
-    #     """
-    #     Return the SOLR index schema - performs a luke request
-    #     @return:
-    #     """
-    #
-    #     for field_name, field in solr_schema['fields'].items():
-    #
-    #         # Parse schema - ITS--------------. Third character denotes if field is stored
-    #         is_stored = field['schema'][2] == 'S'
-    #         is_indexed = field['schema'][0] == 'I'
-    #
-    #         # If we only want indexed fields and it's not indexed, skip field
-    #         # Or it's not stored / a SOLR internal,  skip the field
-    #         if (indexed_only and not is_indexed) or not is_stored or field_name == '_version_':
-    #             continue
-    #
-    #         field_type = field['type'].replace('field_', '')
-    #         if field_type == 'string':
-    #             field_type = 'text'
-    #
-    #         # Structure same as the datastore search
-    #         fields.append({
-    #             'id': field_name,
-    #             'type': field_type
-    #         })
-    #     return fields
