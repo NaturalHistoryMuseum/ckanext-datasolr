@@ -114,8 +114,10 @@ class SolrSearch(object):
                         except (AttributeError, ValueError):
                             pass
 
-        if solr_params.get('facet_field'):
+        try:
             response['facets'] = search.facet_counts
+        except AttributeError:
+            pass
 
         return response
 
@@ -205,4 +207,8 @@ class SolrSearch(object):
             solr_query.append('*:*')
         solr_query = ' AND '.join(solr_query)
 
+        # We allow other modules implementing datasolr_search to add
+        # additional_solr_params, which are combined with these built by the plugin
+        additional_solr_params = params.get('additional_solr_params', {})
+        solr_params.update(additional_solr_params)
         return solr_query, solr_params
