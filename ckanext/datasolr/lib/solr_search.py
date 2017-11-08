@@ -200,6 +200,12 @@ class SolrSearch(object):
                 except KeyError:
                     filter_values = [filter_values] if not isinstance(filter_values, list) else filter_values
                     for filter_value in filter_values:
+                        try:
+                            # Make sure all quotes in the value are escaped correctly.
+                            filter_value = filter_value.replace('"', r'\"')
+                        except AttributeError:
+                            # Catch error for non string values
+                            pass
                         solr_query.append('{}:"{}"'.format(filter_field, filter_value))
 
         # If we have no solr query, then search for everything
