@@ -1,4 +1,6 @@
 import copy
+import logging
+import solr
 import ckan.plugins as p
 from ckan.plugins import PluginImplementations
 from ckan.lib.navl.dictization_functions import validate
@@ -9,6 +11,9 @@ from ckanext.datasolr.lib.config import get_datasolr_resources
 from ckanext.datasolr.logic.schema import datastore_search_schema
 from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.lib.helpers import split_words
+
+
+log = logging.getLogger(__name__)
 
 
 class SolrSearch(object):
@@ -79,7 +84,11 @@ class SolrSearch(object):
             )
         solr_query, solr_params = self.build_query(search_params, self.stored_fields)
 
-        search = self.conn.query(solr_query, **solr_params)
+        try:
+            search = self.conn.query(solr_query, **solr_params)
+        except solr.SolrException:
+            log.critical('SOLR ERROR - query: %s, params: %s', solr_query, solr_params)
+            raise
 
         # If we have requested indexed only fields, then list of fields will be
         # those indexed; otherwise use the default stored fields
@@ -92,12 +101,14 @@ class SolrSearch(object):
         # constantly be called - if there's a group field, set total to zero
         # if there's no records found - otherwise use numFound
         total = 0 if 'group_field' and not search.results else search.numFound
+
         response = dict(
             resource_id=self.resource_id,
             fields=fields,
             total=total,
             records=search.results,
         )
+
         requested_fields = [f['id'] for f in fields]
         # Date fields are returned as python datetime objects
         # So need to be converted into a string
