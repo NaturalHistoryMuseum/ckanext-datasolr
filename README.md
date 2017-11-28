@@ -1,6 +1,8 @@
 Ckan Datastore Solr extension
 =============================
 
+https://travis-ci.org/NaturalHistoryMuseum/ckanext-datasolr.svg?branch=master
+
 *datasolr* is a [Ckan](http://ckan.org) extension to use [Solr](http://lucene.apache.org/solr) to perform datastore queries.
 
 Motivated by low PostgreSQL performance on very large datasets, *datasolr* provides an alternative API endpoint to perform searches using Solr. *datasolr* is compatible with and can be configured to replace the `datastore_search` API endpoint. The returned results may differ however (see **differences with datastore_search**).
