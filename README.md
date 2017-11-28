@@ -1,7 +1,7 @@
 Ckan Datastore Solr extension
 =============================
 
-https://travis-ci.org/NaturalHistoryMuseum/ckanext-datasolr.svg?branch=master
+<img src="https://travis-ci.org/NaturalHistoryMuseum/ckanext-datasolr.svg?branch=master" />
 
 *datasolr* is a [Ckan](http://ckan.org) extension to use [Solr](http://lucene.apache.org/solr) to perform datastore queries.
 
