@@ -192,7 +192,7 @@ class SolrSearch(object):
         if isinstance(q, basestring):
             words = split_words(q, quotes=True)
             for word in words:
-                solr_query.append('_fulltext:{}'.format(word))
+                solr_query.append(u'_fulltext:{}'.format(word))
         elif q:
             for field in q:
                 if field not in field_names:
