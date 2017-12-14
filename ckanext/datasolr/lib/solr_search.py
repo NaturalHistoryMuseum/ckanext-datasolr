@@ -194,10 +194,18 @@ class SolrSearch(object):
             for word in words:
                 solr_query.append(u'_fulltext:{}'.format(word))
         elif q:
-            for field in q:
-                if field not in field_names:
-                    continue
-                solr_query.append('{}:*{}*'.format(field, q['field']))
+            # this code implements the field level auto-completion used in the
+            # advanced filters. The code mirrors the SQL equivalent in terms of
+            # how we detect that the query is an autocompletion query
+            if len(q) == 1 and isinstance(q, dict):
+                field_name = q.keys()[0]
+                if field_name in params.get('fields', []) and q[field_name].endswith(':*'):
+                    solr_query.append('{}:*{}*'.format(field_name, q[field_name][:-2]))
+            else:
+                for field in q:
+                    if field not in field_names:
+                        continue
+                    solr_query.append('{}:*{}*'.format(field, q['field']))
 
         filters = params.get('filters', None)
         if filters:
