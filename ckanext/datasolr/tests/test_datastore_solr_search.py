@@ -7,7 +7,7 @@ from ckanext.datasolr.lib.solr_connection import SolrConnection
 
 
 def main():
-    conn = SolrConnection('http://10.11.20.12/solr/specimen_collection')
+    conn = SolrConnection(u'http://10.11.20.12/solr/specimen_collection')
 
     # query = {
     #     'wt': 'json'
@@ -42,5 +42,5 @@ def main():
 
 
 
-if __name__ == "__main__":
+if __name__ == u'__main__':
     main()

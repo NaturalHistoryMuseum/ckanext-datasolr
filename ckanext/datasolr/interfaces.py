@@ -2,10 +2,10 @@ import ckan.plugins.interfaces as interfaces
 
 
 class IDataSolr(interfaces.Interface):
-    """Allow modifying DataSolr queries"""
+    '''Allow modifying DataSolr queries'''
 
     def datasolr_validate(self, context, data_dict, fields_types):
-        """Validates the ``data_dict`` sent by the user
+        '''Validates the ``data_dict`` sent by the user
 
         This is analogous to IDatastore.datastore_validate.
 
@@ -33,7 +33,7 @@ class IDataSolr(interfaces.Interface):
         @param data_dict: the parameters received from the user
         @param fields_types: the current resource's fields as dict keys and
             their types as values
-        """
+        '''
         return data_dict
 
     def datasolr_search(self, context, data_dict, fields_types, query_dict):
