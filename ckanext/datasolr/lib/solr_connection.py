@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
-'''
-Created by Ben Scott on '10/08/2017'.
-'''
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
 
 import solr
 

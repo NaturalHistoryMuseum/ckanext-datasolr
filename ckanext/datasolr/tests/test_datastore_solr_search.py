@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
+
 import ckan.plugins as p
 import copy
 import urllib
@@ -44,3 +50,5 @@ def main():
 
 if __name__ == u'__main__':
     main()
+
+

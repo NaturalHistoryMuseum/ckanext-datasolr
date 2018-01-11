@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
+
 import ckan.logic as logic
 import importlib
 import pylons
@@ -5,7 +11,6 @@ import solr
 
 import ckan.logic as logic
 import ckan.lib.base as base
-# from ckanext.datastore import db
 from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
 
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
