@@ -16,10 +16,11 @@ bool_validator = get_validator(u'boolean_validator')
 
 
 def datastore_search_schema():
-    '''
-    Override the default ckan datastore_search_schema
+    '''Override the default ckan datastore_search_schema
     To add a cursor for better SOLR searching
     :return: schema
+
+
     '''
     schema = ckan_datastore_search_schema()
     # Optional SOLR cursor parameter

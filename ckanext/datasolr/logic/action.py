@@ -30,7 +30,7 @@ _get_or_bust = logic.get_or_bust
 @logic.side_effect_free
 def datastore_search(context, data_dict):
     '''Search a DataStore resource.
-
+    
     The datastore_search action allows you to search data in a resource.
     DataStore resources that belong to private CKAN resource can only be
     read by you if you have access to the CKAN resource and send the appropriate
@@ -60,21 +60,6 @@ def datastore_search(context, data_dict):
                  e.g.: "fieldname1, fieldname2 desc"
     :param count: If True, the result will include a 'total' field
                   to the total number of matching rows. (optional, default: True)
-    :type sort: string
-
-    Setting the ``plain`` flag to false enables the entire PostgreSQL `full text search query language`_.
-
-    A listing of all available resources can be found at the alias ``_table_metadata``.
-
-    .. _full text search query language: http://www.postgresql.org/docs/9.1/static/datatype-textsearch.html#DATATYPE-TSQUERY
-
-    If you need to download the full resource, read :ref:`dump`.
-
-    **Results:**
-
-    The result of this action is a dictionary with the following keys:
-
-    :rtype: A dictionary with the following keys
     :param fields: fields/columns and their extra metadata
     :type fields: list of dictionaries
     :param offset: query offset value
@@ -87,6 +72,8 @@ def datastore_search(context, data_dict):
     :type total: int
     :param records: list of matching results
     :type records: list of dictionaries
+    :param context: 
+    :param data_dict: 
 
     '''
 

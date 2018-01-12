@@ -11,24 +11,25 @@ from ckanext.datasolr.lib.config import get_datasolr_resources
 
 
 def split_words(phrase, quotes=True):
-    ''' Split a phrase into words
-
+    '''Split a phrase into words
+    
     This will optionally keep "quoted terms" as a
     single word, removing the double quotes.
-
+    
     Double quotes can be escaped by doubling them
     (ie. ""), and they will be singled in the result.
     (though a word that consists only of a
     doubled double quote is removed), and if the
-    number of double quotes is not balanced, then an 
+    number of double quotes is not balanced, then an
     additional double quote is added at the end of the
     phrase.
 
-    @param phrase: Phrase to split
-    @param quotes: If True, then statements
+    :param phrase: Phrase to split
+    :param quotes: If True, then statements
         between double quotes are treated as
         a single word, and the quote symbol is
-        removed. If False, quotes are ignored.
+        removed. If False, quotes are ignored. (Default value = True)
+
     '''
     if not quotes:
         return [w for w in phrase.split(u' ') if w]
@@ -50,9 +51,9 @@ def split_words(phrase, quotes=True):
 
 
 def is_datasolr_resource(resource_id):
-    '''
-    Is a solr resource id in the list of datasolr resources
-    @param resource_id:
-    @return:
+    '''Is a solr resource id in the list of datasolr resources
+
+    :param resource_id: return:
+
     '''
     return resource_id in get_datasolr_resources()

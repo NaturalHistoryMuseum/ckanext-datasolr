@@ -6,4 +6,5 @@
 
 
 class DataSolrException(Exception):
+    ''' '''
     pass

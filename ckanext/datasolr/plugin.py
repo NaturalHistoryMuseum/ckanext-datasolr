@@ -14,6 +14,7 @@ from ckanext.datasolr.lib.helpers import is_datasolr_resource
 
 
 class DataSolrPlugin(p.SingletonPlugin):
+    ''' '''
     p.implements(p.interfaces.IActions)
     p.implements(p.ITemplateHelpers, inherit=True)
     p.implements(p.IRoutes, inherit=True)
@@ -21,22 +22,29 @@ class DataSolrPlugin(p.SingletonPlugin):
 
     # IActions
     def get_actions(self):
+        ''' '''
         return {
             u'datastore_search': datastore_search
         }
 
     # ITemplateHelpers
     def get_helpers(self):
+        ''' '''
         return {
             u'is_datasolr_resource': is_datasolr_resource
         }
 
     # IDataSolr
     def datasolr_validate(self, context, data_dict, fields):
-        ''' Validates the input request.
-
+        '''Validates the input request.
+        
         This is the main validator, which will remove all known fields
         from fields, sort, q as well as all other accepted input parameters.
+
+        :param context: 
+        :param data_dict: 
+        :param fields: 
+
         '''
         field_names = [f[u'id'] for f in fields]
         # Validate field list
@@ -91,7 +99,14 @@ class DataSolrPlugin(p.SingletonPlugin):
         return data_dict
 
     def datasolr_search(self, context, data_dict, fields, query_dict):
-        ''' Build the solr search '''
+        '''Build the solr search
+
+        :param context: 
+        :param data_dict: 
+        :param fields: 
+        :param query_dict: 
+
+        '''
         query_params = dict(
             resource_id=data_dict[u'resource_id'],
             q=data_dict.get(u'q', []),

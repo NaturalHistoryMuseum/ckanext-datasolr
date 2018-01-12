@@ -23,10 +23,12 @@ log = logging.getLogger(__name__)
 
 
 class SolrSearch(object):
-    ''' Class used to implement the solr search action
-    @param context: Ckan execution context
-    @param context: Ckan execution context
-    @param params: Dictionary containing the action parameters
+    '''Class used to implement the solr search action
+
+    :param context: Ckan execution context
+    :param context: Ckan execution context
+    :param params: Dictionary containing the action parameters
+
     '''
 
     def __init__(self, resource_id, context, params):
@@ -42,10 +44,11 @@ class SolrSearch(object):
         self.stored_fields = self.conn.stored_fields()
 
     def _check_access(self):
-        ''' Ensure we have access to the defined resource '''
+        '''Ensure we have access to the defined resource'''
         p.toolkit.check_access(u'datastore_search', self.context, self.params)
 
     def validate(self):
+        ''' '''
         schema = self.context.get(u'schema', datastore_search_schema())
         self.params, errors = validate(self.params, schema, self.context)
         if errors:
@@ -78,8 +81,7 @@ class SolrSearch(object):
             })
 
     def fetch(self):
-        ''' Run the query and fetch the data
-        '''
+        '''Run the query and fetch the data'''
         self._check_access()
         search_params = {}
 
@@ -140,9 +142,12 @@ class SolrSearch(object):
 
     @staticmethod
     def build_query(params, field_names):
-        ''' Build a solr query from API parameters
+        '''Build a solr query from API parameters
 
-        @returns a dictionary defining SOLR request parameters
+        :param params: 
+        :param field_names: 
+        :returns: s a dictionary defining SOLR request parameters
+
         '''
         solr_query = []
         solr_params = dict(

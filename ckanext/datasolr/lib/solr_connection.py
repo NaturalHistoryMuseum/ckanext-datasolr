@@ -11,14 +11,13 @@ import json
 
 
 class SolrConnection(solr.SolrConnection):
-    '''
-    Extend solr connection with a schema call
-    '''
+    '''Extend solr connection with a schema call'''
 
     # Field cache - keyed by connection URL to prevent clashes
     _fields_cache = {}
 
     def fields(self):
+        ''' '''
         # If we haven't already populated the _fields list, build it
         if not self._fields_cache.get(self.url, None):
 
@@ -56,15 +55,9 @@ class SolrConnection(solr.SolrConnection):
         return self._fields_cache[self.url]
 
     def indexed_fields(self):
-        '''
-        Get all filtered fields
-        @return:
-        '''
+        '''Get all filtered fields'''
         return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if f[u'indexed']]
 
     def stored_fields(self):
-        '''
-        Get all stored fields
-        @return:
-        '''
+        '''Get all stored fields'''
         return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if f[u'stored']]
