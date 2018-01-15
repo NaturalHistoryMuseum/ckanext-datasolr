@@ -4,11 +4,10 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-import ckan.plugins as p
-from ckanext.datastore.logic.schema import datastore_search_schema as ckan_datastore_search_schema
-from ckanext.datastore.logic.schema import list_of_strings_or_string, json_validator
-
-get_validator = p.toolkit.get_validator
+from ckan.plugins.toolkit import get_validator
+from ckanext.datastore.logic.schema import (
+    datastore_search_schema as ckan_datastore_search_schema, json_validator,
+    list_of_strings_or_string)
 
 ignore_missing = get_validator(u'ignore_missing')
 int_validator = get_validator(u'int_validator')
@@ -17,9 +16,9 @@ bool_validator = get_validator(u'boolean_validator')
 
 def datastore_search_schema():
     '''Override the default ckan datastore_search_schema
-    To add a cursor for better SOLR searching
-    :return: schema
+    to add a cursor for better SOLR searching
 
+    :returns: schema
 
     '''
     schema = ckan_datastore_search_schema()

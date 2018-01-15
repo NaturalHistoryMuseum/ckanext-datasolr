@@ -6,5 +6,6 @@
 
 
 class DataSolrException(Exception):
-    ''' '''
+    '''An Exception thrown by the ckanext-datasolr plugin.'''
+    # TODO: write a more useful exception
     pass

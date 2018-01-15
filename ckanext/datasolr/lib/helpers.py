@@ -5,7 +5,6 @@
 # Created by the Natural History Museum in London, UK
 
 import re
-import sqlparse
 
 from ckanext.datasolr.lib.config import get_datasolr_resources
 
@@ -24,11 +23,12 @@ def split_words(phrase, quotes=True):
     additional double quote is added at the end of the
     phrase.
 
-    :param phrase: Phrase to split
-    :param quotes: If True, then statements
+    :param phrase: phrase to split
+    :param quotes: if True, then statements
         between double quotes are treated as
         a single word, and the quote symbol is
-        removed. If False, quotes are ignored. (Default value = True)
+        removed. If False, quotes are ignored. (optional, default: True)
+    :returns: a list of words
 
     '''
     if not quotes:
@@ -53,7 +53,8 @@ def split_words(phrase, quotes=True):
 def is_datasolr_resource(resource_id):
     '''Is a solr resource id in the list of datasolr resources
 
-    :param resource_id: return:
+    :param resource_id: the id of the resource to search for
+    :returns: boolean (True if in datasolr resources, False if not)
 
     '''
     return resource_id in get_datasolr_resources()

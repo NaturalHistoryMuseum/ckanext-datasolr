@@ -94,4 +94,3 @@ class IDataSolr(interfaces.Interface):
 
         '''
         return query_dict
-

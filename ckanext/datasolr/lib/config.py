@@ -4,20 +4,17 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-import pylons
+from ckan.plugins.toolkit import config
 
 
 def get_datasolr_resources():
-    '''Return a dictionary of all datasolr resources, as defined on the
-    CKAN Pylons configuration file
+    '''Return a dictionary of all datasolr resources, as defined in the
+    CKAN configuration
 
 
-    :returns: dict
+    :returns: a dictionary of all datasolr resources in the config
 
     '''
     config_key = u'ckanext.datasolr.'
-    return {k.replace(config_key, u''): pylons.config.get(k)
-            for k in pylons.config.keys() if config_key in k}
-
-
-
+    return {k.replace(config_key, u''): config.get(k) for k in config.keys() if
+            config_key in k}

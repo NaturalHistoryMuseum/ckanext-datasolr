@@ -6,18 +6,17 @@
 
 import copy
 import logging
+
 import solr
-import ckan.plugins as p
-from ckan.plugins import PluginImplementations
-from ckan.lib.navl.dictization_functions import validate
-import ckanext.datastore.helpers as datastore_helpers
-
-from ckanext.datasolr.lib.solr_connection import SolrConnection
-from ckanext.datasolr.lib.config import get_datasolr_resources
-from ckanext.datasolr.logic.schema import datastore_search_schema
 from ckanext.datasolr.interfaces import IDataSolr
+from ckanext.datasolr.lib.config import get_datasolr_resources
 from ckanext.datasolr.lib.helpers import split_words
+from ckanext.datasolr.lib.solr_connection import SolrConnection
+from ckanext.datasolr.logic.schema import datastore_search_schema
 
+import ckanext.datastore.helpers as datastore_helpers
+from ckan.lib.navl.dictization_functions import validate
+from ckan.plugins import PluginImplementations, toolkit
 
 log = logging.getLogger(__name__)
 
@@ -25,9 +24,9 @@ log = logging.getLogger(__name__)
 class SolrSearch(object):
     '''Class used to implement the solr search action
 
-    :param context: Ckan execution context
-    :param context: Ckan execution context
-    :param params: Dictionary containing the action parameters
+    :param resource_id: the ID of the resource to search for
+    :param context: CKAN execution context
+    :param params: additional search parameters
 
     '''
 
@@ -45,14 +44,14 @@ class SolrSearch(object):
 
     def _check_access(self):
         '''Ensure we have access to the defined resource'''
-        p.toolkit.check_access(u'datastore_search', self.context, self.params)
+        toolkit.check_access(u'datastore_search', self.context, self.params)
 
     def validate(self):
-        ''' '''
+        '''Check for errors in the search'''
         schema = self.context.get(u'schema', datastore_search_schema())
         self.params, errors = validate(self.params, schema, self.context)
         if errors:
-            raise p.toolkit.ValidationError(errors)
+            raise toolkit.ValidationError(errors)
         self.params[u'resource_id'] = self.resource_id
         # Parse & Set default fields if none are present
         if u'fields' in self.params:
@@ -61,9 +60,8 @@ class SolrSearch(object):
         data_dict = copy.deepcopy(self.params)
 
         for plugin in PluginImplementations(IDataSolr):
-            data_dict = plugin.datasolr_validate(
-                self.context, data_dict, self.indexed_fields
-            )
+            data_dict = plugin.datasolr_validate(self.context, data_dict,
+                                                 self.indexed_fields)
 
         for key, values in data_dict.items():
             if key in [u'resource_id'] or not values:
@@ -76,9 +74,9 @@ class SolrSearch(object):
                 value = values.keys()[0]
             else:
                 value = values
-            raise p.toolkit.ValidationError({
+            raise toolkit.ValidationError({
                 key: [u'invalid value "{0}"'.format(value)]
-            })
+                })
 
     def fetch(self):
         '''Run the query and fetch the data'''
@@ -87,9 +85,8 @@ class SolrSearch(object):
 
         # When we perform the fetch, we want to use stored fields
         for plugin in PluginImplementations(IDataSolr):
-            search_params = plugin.datasolr_search(
-                self.context, self.params, self.stored_fields, search_params
-            )
+            search_params = plugin.datasolr_search(self.context, self.params,
+                                                   self.stored_fields, search_params)
         solr_query, solr_params = self.build_query(search_params, self.stored_fields)
 
         try:
@@ -103,31 +100,30 @@ class SolrSearch(object):
         fields = self.indexed_fields if self.indexed_only else self.stored_fields
 
         # Hide any internal fields - those starting with underscore (except for _id)
-        fields = [f for f in fields if not f[u'id'].startswith(u'_') or f[u'id'] == u'_id']
+        fields = [f for f in fields if
+                  not f[u'id'].startswith(u'_') or f[u'id'] == u'_id']
 
         # numFound isn't working with group fields, so auto-completes will
         # constantly be called - if there's a group field, set total to zero
         # if there's no records found - otherwise use numFound
         total = 0 if u'group_field' and not search.results else search.numFound
 
-        response = dict(
-            resource_id=self.resource_id,
-            fields=fields,
-            total=total,
-            records=search.results,
-        )
+        response = dict(resource_id=self.resource_id, fields=fields, total=total,
+                        records=search.results, )
 
         requested_fields = [f[u'id'] for f in fields]
         # Date fields are returned as python datetime objects
         # So need to be converted into a string
-        date_fields = [f[u'id'] for f in self.stored_fields if f[u'type'] == u'date' and f[u'id'] in requested_fields]
+        date_fields = [f[u'id'] for f in self.stored_fields if
+                       f[u'type'] == u'date' and f[u'id'] in requested_fields]
         if date_fields:
             for record in response[u'records']:
                 for date_field in date_fields:
                     # TODO: This returns everything in one date (not time) format
                     # TODO: Identify the date depth and format accordingly
                     if date_field in record:
-                        # If the data cannot be parsed into an real date, do not raise exception
+                        # If the data cannot be parsed into an real date,
+                        # do not raise exception
                         try:
                             record[date_field] = record[date_field].strftime(u'%Y-%m-%d')
                         except (AttributeError, ValueError):
@@ -144,16 +140,13 @@ class SolrSearch(object):
     def build_query(params, field_names):
         '''Build a solr query from API parameters
 
+        :param field_names:
         :param params: 
-        :param field_names: 
-        :returns: s a dictionary defining SOLR request parameters
+        :returns: a dictionary defining SOLR request parameters
 
         '''
         solr_query = []
-        solr_params = dict(
-            score=False,
-            rows=params.get(u'limit', 100),
-        )
+        solr_params = dict(score=False, rows=params.get(u'limit', 100), )
         # Add fields to the params
         fields = params.get(u'fields', None)
         if fields:
@@ -210,7 +203,8 @@ class SolrSearch(object):
             # how we detect that the query is an autocompletion query
             if len(q) == 1 and isinstance(q, dict):
                 field_name = q.keys()[0]
-                if field_name in params.get(u'fields', []) and q[field_name].endswith(u':*'):
+                if field_name in params.get(u'fields', []) and q[field_name].endswith(
+                        u':*'):
                     solr_query.append(u'{}:*{}*'.format(field_name, q[field_name][:-2]))
             else:
                 for field in q:
@@ -228,7 +222,8 @@ class SolrSearch(object):
                 try:
                     solr_query.append(filter_statements[filter_field])
                 except KeyError:
-                    filter_values = [filter_values] if not isinstance(filter_values, list) else filter_values
+                    filter_values = [filter_values] if not isinstance(filter_values,
+                                                                      list) else filter_values
                     for filter_value in filter_values:
                         try:
                             # Make sure all quotes in the value are escaped correctly.

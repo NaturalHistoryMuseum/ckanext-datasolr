@@ -4,10 +4,10 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-import solr
-
-import urllib
 import json
+import urllib
+
+import solr
 
 
 class SolrConnection(solr.SolrConnection):
@@ -17,15 +17,19 @@ class SolrConnection(solr.SolrConnection):
     _fields_cache = {}
 
     def fields(self):
-        ''' '''
+        '''Get all fields.
+
+
+        :returns: a list of fields (dict objects)
+
+        '''
         # If we haven't already populated the _fields list, build it
         if not self._fields_cache.get(self.url, None):
-
             self._fields_cache[self.url] = []
 
             query = {
                 u'wt': u'json'
-            }
+                }
             request = urllib.urlencode(query, doseq=True)
 
             selector = self.path + '/admin/luke'
@@ -36,7 +40,8 @@ class SolrConnection(solr.SolrConnection):
 
             for field_name, field in solr_schema[u'fields'].items():
 
-                # Parse schema - ITS--------------. Third character denotes if field is stored
+                # Parse schema - ITS--------------.
+                # Third character denotes if field is stored
                 is_stored = field[u'schema'][2] == u'S'
                 is_indexed = field[u'schema'][0] == u'I'
 
@@ -50,14 +55,26 @@ class SolrConnection(solr.SolrConnection):
                     u'type': field_type,
                     u'indexed': is_indexed,
                     u'stored': is_stored
-                })
+                    })
 
         return self._fields_cache[self.url]
 
     def indexed_fields(self):
-        '''Get all filtered fields'''
-        return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if f[u'indexed']]
+        '''Get all filtered fields
+
+
+        :returns: a list of fields marked 'indexed'
+
+        '''
+        return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if
+                f[u'indexed']]
 
     def stored_fields(self):
-        '''Get all stored fields'''
-        return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if f[u'stored']]
+        '''Get all stored fields
+
+
+        :returns: a list of fields marked 'stored'
+
+        '''
+        return [{u'id': f[u'id'], u'type': f[u'type']} for f in self.fields() if
+                f[u'stored']]

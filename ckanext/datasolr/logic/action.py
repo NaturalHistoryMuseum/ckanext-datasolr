@@ -4,27 +4,11 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-import ckan.logic as logic
-import importlib
-import pylons
-import solr
-
-import ckan.logic as logic
-import ckan.lib.base as base
-from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
-
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
 from ckanext.datasolr.lib.solr_search import SolrSearch
 
-render = base.render
-abort = base.abort
-redirect = base.redirect
-
-NotFound = logic.NotFound
-NotAuthorized = logic.NotAuthorized
-get_action = logic.get_action
-check_access = logic.check_access
-_get_or_bust = logic.get_or_bust
+import ckan.logic as logic
+from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
 
 
 @logic.side_effect_free
@@ -72,15 +56,15 @@ def datastore_search(context, data_dict):
     :type total: int
     :param records: list of matching results
     :type records: list of dictionaries
-    :param context: 
+    :param context: param data_dict:
     :param data_dict: 
 
     '''
 
     resource_id = data_dict.get(u'resource_id')
 
-    # If this isn't a datasolr resource (we've hijacked all datastore
-    # searches at this point, reroute request to the real datastore search endpoint
+    # If this isn't a datasolr resource (we've hijacked all datastore searches at this
+    # point), reroute request to the real datastore search endpoint
     if not is_datasolr_resource(resource_id):
         # Remove the indexed only flag
         data_dict.pop(u'indexed_only', None)
@@ -90,5 +74,3 @@ def datastore_search(context, data_dict):
     solr_search = SolrSearch(resource_id, context, data_dict)
     solr_search.validate()
     return solr_search.fetch()
-
-
