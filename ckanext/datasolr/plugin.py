@@ -95,14 +95,15 @@ class DataSolrPlugin(p.SingletonPlugin):
             facets_field_limit=data_dict.get('facets_field_limit'),
             limit=data_dict.get('limit', 100),
             sort=data_dict.get('sort'),
-            distinct=data_dict.get('distinct', False)
+            distinct=data_dict.get('distinct', False),
+            cursor=data_dict.get('cursor', None),
         )
         query_params['fields'] = data_dict.get('fields', [f['id'] for f in fields])
         cursor = data_dict.get('cursor', None)
         if cursor:
             # Must be sorted on primary key
             # TODO: We could get the primary field from the solr schema lookup
-            query_params['sort'] = [('_id', 'ASC')]
+            query_params['sort'] = '_id'
         else:
             # If we've specified a paging cursor, then we don't want to use the offset
             query_params['offset'] = data_dict.get('offset', 0)
