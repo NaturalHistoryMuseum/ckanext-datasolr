@@ -7,13 +7,14 @@
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
 from ckanext.datasolr.lib.solr_search import SolrSearch
 
+from ckan.plugins import toolkit
 import ckan.logic as logic
-from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
 
 
 @logic.side_effect_free
-def datastore_search(context, data_dict):
-    '''Search a DataStore resource.
+@toolkit.chained_action
+def datastore_search(prev_func, context, data_dict):
+    '''Overrides the default datastore search.
     
     The datastore_search action allows you to search data in a resource.
     DataStore resources that belong to private CKAN resource can only be
@@ -69,7 +70,7 @@ def datastore_search(context, data_dict):
         # Remove the indexed only flag
         data_dict.pop(u'indexed_only', None)
         # Pass request to the original datastore search
-        return ckan_datastore_search(context, data_dict)
+        return prev_func(context, data_dict)
 
     solr_search = SolrSearch(resource_id, context, data_dict)
     solr_search.validate()
