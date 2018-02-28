@@ -107,7 +107,13 @@ class SolrSearch(object):
             fields=fields,
             total=total,
             records=search.results,
+            # indicates that this response came from Solr, this is used by the ckanpackager
+            _backend='datasolr',
         )
+
+        # if there is a next cursor mark in the Solr response, pass it on
+        if hasattr(search, 'nextCursorMark'):
+            response['next_cursor'] = search.nextCursorMark
 
         requested_fields = [f['id'] for f in fields]
         # Date fields are returned as python datetime objects
@@ -161,6 +167,10 @@ class SolrSearch(object):
             solr_params['group'] = 'true'
             solr_params['group_field'] = fields
             solr_params['group_main'] = 'true'
+        # add cursor
+        cursor = params.get('cursor', None)
+        if cursor:
+            solr_params['cursorMark'] = cursor
 
         # Add facets
         facets = params.get('facets', [])
