@@ -4,14 +4,14 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-from ckan.plugins.toolkit import get_validator
+from ckan.plugins import toolkit
 from ckanext.datastore.logic.schema import (
     datastore_search_schema as ckan_datastore_search_schema, json_validator,
     list_of_strings_or_string)
 
-ignore_missing = get_validator(u'ignore_missing')
-int_validator = get_validator(u'int_validator')
-bool_validator = get_validator(u'boolean_validator')
+ignore_missing = toolkit.get_validator(u'ignore_missing')
+int_validator = toolkit.get_validator(u'int_validator')
+bool_validator = toolkit.get_validator(u'boolean_validator')
 
 
 def datastore_search_schema():

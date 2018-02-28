@@ -9,14 +9,14 @@ from ckanext.datasolr.interfaces import IDataSolr
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
 from ckanext.datasolr.logic.action import datastore_search
 
-import ckan.plugins as p
+from ckan.plugins import interfaces, SingletonPlugin, implements
 
 
-class DataSolrPlugin(p.SingletonPlugin):
+class DataSolrPlugin(SingletonPlugin):
     ''' '''
-    p.implements(p.interfaces.IActions)
-    p.implements(p.ITemplateHelpers, inherit=True)
-    p.implements(IDataSolr)
+    implements(interfaces.IActions)
+    implements(interfaces.ITemplateHelpers, inherit=True)
+    implements(IDataSolr)
 
     # IActions
     def get_actions(self):
@@ -63,7 +63,7 @@ class DataSolrPlugin(p.SingletonPlugin):
         # Remove all facets_field_limit that are valid field names
         facets_field_limit = data_dict.get(u'facets_field_limit', {})
         data_dict[u'facets_field_limit'] = list(
-                set(facets_field_limit.keys()) - set(field_names))
+            set(facets_field_limit.keys()) - set(field_names))
 
         if data_dict.get(u'q'):
             if isinstance(data_dict[u'q'], basestring):

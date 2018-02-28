@@ -15,7 +15,6 @@ from ckanext.datasolr.lib.solr_connection import SolrConnection
 from ckanext.datasolr.logic.schema import datastore_search_schema
 
 import ckanext.datastore.helpers as datastore_helpers
-from ckan.lib.navl.dictization_functions import validate
 from ckan.plugins import PluginImplementations, toolkit
 
 log = logging.getLogger(__name__)
@@ -49,7 +48,7 @@ class SolrSearch(object):
     def validate(self):
         '''Check for errors in the search'''
         schema = self.context.get(u'schema', datastore_search_schema())
-        self.params, errors = validate(self.params, schema, self.context)
+        self.params, errors = toolkit.navl_validate(self.params, schema, self.context)
         if errors:
             raise toolkit.ValidationError(errors)
         self.params[u'resource_id'] = self.resource_id

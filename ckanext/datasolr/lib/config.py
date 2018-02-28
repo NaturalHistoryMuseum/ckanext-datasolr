@@ -4,7 +4,7 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-from ckan.plugins.toolkit import config
+from ckan.plugins import toolkit
 
 
 def get_datasolr_resources():
@@ -16,5 +16,5 @@ def get_datasolr_resources():
 
     '''
     config_key = u'ckanext.datasolr.'
-    return {k.replace(config_key, u''): config.get(k) for k in config.keys() if
+    return {k.replace(config_key, u''): toolkit.config.get(k) for k in toolkit.config.keys() if
             config_key in k}

@@ -4,7 +4,7 @@
 # This file is part of ckanext-datasolr
 # Created by the Natural History Museum in London, UK
 
-import ckan.plugins.interfaces as interfaces
+from ckan.plugins import interfaces
 
 
 class IDataSolr(interfaces.Interface):
