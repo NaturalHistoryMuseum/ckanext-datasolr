@@ -62,20 +62,36 @@ class SolrSearch(object):
             data_dict = plugin.datasolr_validate(self.context, data_dict,
                                                  self.indexed_fields)
 
-        for key, values in data_dict.items():
-            if key in [u'resource_id'] or not values:
+        error_list = {}
+        for key, validators in schema.items():
+            value = data_dict.get(key, None)
+            args = {
+                'key': key,
+                'data': data_dict,
+                'errors': error_list,
+                'context': self.context,
+                'value': value
+            }
+            try:
+                for validator in validators:
+                    if isinstance(validator, type):
+                        type_match = isinstance(value, validator)
+                        if not type_match:
+                            error_list[key] = [u'invalid value "{0}"'.format(value)]
+                    elif isinstance(validator, toolkit.get_validator('OneOf')):
+                        try:
+                            validator.to_python(value)
+                        except toolkit.Invalid:
+                            error_list[key] = [u'invalid value "{0}"'.format(value)]
+                    else:
+                        validator_args = {k: v for k, v in args.items() if
+                                          k in validator.func_code.co_varnames[:validator.func_code.co_argcount]}
+                        validator(**validator_args)
+            except toolkit.StopOnError:
                 continue
-            if isinstance(values, basestring):
-                value = values
-            elif isinstance(values, (list, tuple)):
-                value = values[0]
-            elif isinstance(values, dict):
-                value = values.keys()[0]
-            else:
-                value = values
-            raise toolkit.ValidationError({
-                key: [u'invalid value "{0}"'.format(value)]
-                })
+
+        if len(error_list) > 0:
+            raise toolkit.ValidationError(error_list)
 
     def fetch(self):
         '''Run the query and fetch the data'''
