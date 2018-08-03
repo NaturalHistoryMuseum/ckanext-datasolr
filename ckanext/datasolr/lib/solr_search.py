@@ -123,8 +123,18 @@ class SolrSearch(object):
         # if there's no records found - otherwise use numFound
         total = 0 if u'group_field' and not search.results else search.numFound
 
-        response = dict(resource_id=self.resource_id, fields=fields, total=total,
-                        records=search.results, )
+        response = dict(
+            resource_id=self.resource_id,
+            fields=fields,
+            total=total,
+            records=search.results,
+            # indicates that this response came from Solr, this is used by the ckanpackager
+            _backend=u'datasolr',
+        )
+
+        # if there is a next cursor mark in the Solr response, pass it on
+        if hasattr(search, u'nextCursorMark'):
+            response[u'next_cursor'] = search.nextCursorMark
 
         requested_fields = [f[u'id'] for f in fields]
         # Date fields are returned as python datetime objects
@@ -180,6 +190,10 @@ class SolrSearch(object):
             solr_params[u'group'] = u'true'
             solr_params[u'group_field'] = fields
             solr_params[u'group_main'] = u'true'
+        # add cursor
+        cursor = params.get(u'cursor', None)
+        if cursor:
+            solr_params[u'cursorMark'] = cursor
 
         # Add facets
         facets = params.get(u'facets', [])

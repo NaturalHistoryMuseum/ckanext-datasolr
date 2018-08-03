@@ -104,13 +104,15 @@ class DataSolrPlugin(SingletonPlugin):
 
         '''
         query_params = dict(resource_id=data_dict[u'resource_id'],
-                            q=data_dict.get(u'q', []), filters=data_dict.get(u'filters'),
+                            q=data_dict.get(u'q', []),
+                            filters=data_dict.get(u'filters'),
                             facets=data_dict.get(u'facets'),
                             facets_limit=data_dict.get(u'facets_limit'),
                             facets_field_limit=data_dict.get(u'facets_field_limit'),
                             limit=data_dict.get(u'limit', 100),
                             sort=data_dict.get(u'sort'),
-                            distinct=data_dict.get(u'distinct', False))
+                            distinct=data_dict.get(u'distinct', False),
+                            cursor=data_dict.get(u'cursor', None),)
         query_params[u'fields'] = data_dict.get(u'fields', [f[u'id'] for f in fields])
         cursor = data_dict.get(u'cursor', None)
         if cursor:
