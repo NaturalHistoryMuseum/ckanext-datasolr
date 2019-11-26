@@ -1,34 +1,33 @@
 #!/usr/bin/env python
 # encoding: utf-8
-"""
-Created by 'bens3' on 2013-06-21.
-Copyright (c) 2013 'bens3'. All rights reserved.
-"""
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
 
-import ckan.plugins as p
-from ckanext.datastore.logic.schema import datastore_search_schema as ckan_datastore_search_schema
-from ckanext.datastore.logic.schema import list_of_strings_or_string, json_validator
+from ckan.plugins import toolkit
+from ckanext.datastore.logic.schema import (
+    datastore_search_schema as ckan_datastore_search_schema, json_validator,
+    list_of_strings_or_string)
 
-get_validator = p.toolkit.get_validator
-
-ignore_missing = get_validator('ignore_missing')
-int_validator = get_validator('int_validator')
-bool_validator = get_validator('boolean_validator')
+ignore_missing = toolkit.get_validator(u'ignore_missing')
+int_validator = toolkit.get_validator(u'int_validator')
+bool_validator = toolkit.get_validator(u'boolean_validator')
 
 
 def datastore_search_schema():
-    """
-    Override the default ckan datastore_search_schema
-    To add a cursor for better SOLR searching
-    :return: schema
-    """
+    '''Override the default ckan datastore_search_schema
+    to add a cursor for better SOLR searching
+
+    :returns: schema
+
+    '''
     schema = ckan_datastore_search_schema()
     # Optional SOLR cursor parameter
-    schema['cursor'] = [ignore_missing]
+    schema[u'cursor'] = [ignore_missing]
     # Optional facets parameter
-    schema['facets'] = [ignore_missing, list_of_strings_or_string]
+    schema[u'facets'] = [ignore_missing, list_of_strings_or_string]
     # Optional number of facets to return
-    schema['facets_limit'] = [ignore_missing, int_validator]
-    schema['facets_field_limit'] = [ignore_missing, json_validator]
-    schema['indexed_only'] = [ignore_missing, bool_validator]
+    schema[u'facets_limit'] = [ignore_missing, int_validator]
+    schema[u'facets_field_limit'] = [ignore_missing, json_validator]
+    schema[u'indexed_only'] = [ignore_missing, bool_validator]
     return schema

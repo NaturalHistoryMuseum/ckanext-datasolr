@@ -1,111 +1,126 @@
-import ckan.plugins as p
-from pylons import config
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
+
 import re
-
 from ckanext.datasolr.interfaces import IDataSolr
-from ckanext.datasolr.logic.action import datastore_search
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
+from ckanext.datasolr.logic.action import datastore_search
+
+from ckan.plugins import interfaces, SingletonPlugin, implements
 
 
-class DataSolrPlugin(p.SingletonPlugin):
-    p.implements(p.interfaces.IActions)
-    p.implements(p.ITemplateHelpers, inherit=True)
-    p.implements(p.IRoutes, inherit=True)
-    p.implements(IDataSolr)
+class DataSolrPlugin(SingletonPlugin):
+    ''' '''
+    implements(interfaces.IActions)
+    implements(interfaces.ITemplateHelpers, inherit=True)
+    implements(IDataSolr)
 
     # IActions
     def get_actions(self):
         return {
-            'datastore_search': datastore_search
-        }
+            u'datastore_search': datastore_search
+            }
 
     # ITemplateHelpers
     def get_helpers(self):
         return {
-            'is_datasolr_resource': is_datasolr_resource
-        }
+            u'is_datasolr_resource': is_datasolr_resource
+            }
 
     # IDataSolr
     def datasolr_validate(self, context, data_dict, fields):
-        """ Validates the input request.
-
+        '''Validates the input request.
+        
         This is the main validator, which will remove all known fields
         from fields, sort, q as well as all other accepted input parameters.
-        """
-        field_names = [f['id'] for f in fields]
-        # Validate field list
-        if 'fields' in data_dict:
-            data_dict['fields'] = list(
-                set(data_dict['fields']) - set(field_names)
-            )
 
-        sort = data_dict.get('sort', [])
+        :param context:
+        :param fields: 
+        :param data_dict: 
+
+        '''
+        field_names = [f[u'id'] for f in fields]
+        # Validate field list
+        if u'fields' in data_dict:
+            data_dict[u'fields'] = list(set(data_dict[u'fields']) - set(field_names))
+
+        sort = data_dict.get(u'sort', [])
         # Ensure sort is a list
         sort = [sort] if not isinstance(sort, list) else sort
         # Before validating field name, replace asc/desc from
-        sort = [re.sub('\s(desc|asc)', '', s) for s in sort]
+        sort = [re.sub(u'\s(desc|asc)', u'', s) for s in sort]
         # Remove all sorts that are valid field names - the remainder
         # Are invalid fields
-        data_dict['sort'] = list(set(sort) - set(field_names))
+        data_dict[u'sort'] = list(set(sort) - set(field_names))
         # Remove all filters that are valid field names
-        filters = data_dict.get('filters', {})
+        filters = data_dict.get(u'filters', {})
         invalid_filter_fields = list(set(filters.keys()) - set(field_names))
-        data_dict['filters'] = {k: filters[k] for k in invalid_filter_fields}
+        data_dict[u'filters'] = {k: filters[k] for k in invalid_filter_fields}
 
         # Remove all facets_field_limit that are valid field names
-        facets_field_limit = data_dict.get('facets_field_limit', {})
-        data_dict['facets_field_limit'] = list(set(facets_field_limit.keys()) - set(field_names))
+        facets_field_limit = data_dict.get(u'facets_field_limit', {})
+        data_dict[u'facets_field_limit'] = list(
+            set(facets_field_limit.keys()) - set(field_names))
 
-        if data_dict.get('q'):
-            if isinstance(data_dict['q'], basestring):
-                data_dict['q'] = None
+        if data_dict.get(u'q'):
+            if isinstance(data_dict[u'q'], basestring):
+                data_dict[u'q'] = None
             else:
                 for field in field_names:
-                    if field in data_dict['q']:
-                        del data_dict['q'][field]
+                    if field in data_dict[u'q']:
+                        del data_dict[u'q'][field]
 
         # Remove all the known fields
-        for field in ['distinct', 'cursor', 'facets', 'facets_limit', 'indexed_only']:
+        for field in [u'distinct', u'cursor', u'facets', u'facets_limit',
+                      u'indexed_only']:
             data_dict.pop(field, None)
 
         # Validate offset & limit as integers
-        if 'offset' in data_dict:
+        if u'offset' in data_dict:
             try:
-                int(data_dict['offset'])
-                del data_dict['offset']
+                int(data_dict[u'offset'])
+                del data_dict[u'offset']
             except ValueError:
                 pass
-        if 'limit' in data_dict:
+        if u'limit' in data_dict:
             try:
-                int(data_dict['limit'])
-                del data_dict['limit']
+                int(data_dict[u'limit'])
+                del data_dict[u'limit']
             except ValueError:
                 pass
 
         return data_dict
 
     def datasolr_search(self, context, data_dict, fields, query_dict):
-        """ Build the solr search """
-        query_params = dict(
-            resource_id=data_dict['resource_id'],
-            q=data_dict.get('q', []),
-            filters=data_dict.get('filters'),
-            facets=data_dict.get('facets'),
-            facets_limit=data_dict.get('facets_limit'),
-            facets_field_limit=data_dict.get('facets_field_limit'),
-            limit=data_dict.get('limit', 100),
-            sort=data_dict.get('sort'),
-            distinct=data_dict.get('distinct', False),
-            cursor=data_dict.get('cursor', None),
-        )
-        query_params['fields'] = data_dict.get('fields', [f['id'] for f in fields])
-        cursor = data_dict.get('cursor', None)
+        '''Build the solr search
+
+        :param context:
+        :param fields:
+        :param data_dict: 
+        :param query_dict: 
+
+        '''
+        query_params = dict(resource_id=data_dict[u'resource_id'],
+                            q=data_dict.get(u'q', []),
+                            filters=data_dict.get(u'filters'),
+                            facets=data_dict.get(u'facets'),
+                            facets_limit=data_dict.get(u'facets_limit'),
+                            facets_field_limit=data_dict.get(u'facets_field_limit'),
+                            limit=data_dict.get(u'limit', 100),
+                            sort=data_dict.get(u'sort'),
+                            distinct=data_dict.get(u'distinct', False),
+                            cursor=data_dict.get(u'cursor', None),)
+        query_params[u'fields'] = data_dict.get(u'fields', [f[u'id'] for f in fields])
+        cursor = data_dict.get(u'cursor', None)
         if cursor:
             # Must be sorted on primary key
             # TODO: We could get the primary field from the solr schema lookup
-            query_params['sort'] = '_id'
+            query_params[u'sort'] = [(u'_id', u'ASC')]
         else:
             # If we've specified a paging cursor, then we don't want to use the offset
-            query_params['offset'] = data_dict.get('offset', 0)
+            query_params[u'offset'] = data_dict.get(u'offset', 0)
 
         return query_params

@@ -1,31 +1,21 @@
-import ckan.logic as logic
-import importlib
-import pylons
-import solr
-
-import ckan.logic as logic
-import ckan.lib.base as base
-# from ckanext.datastore import db
-from ckanext.datastore.logic.action import datastore_search as ckan_datastore_search
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# This file is part of ckanext-datasolr
+# Created by the Natural History Museum in London, UK
 
 from ckanext.datasolr.lib.helpers import is_datasolr_resource
 from ckanext.datasolr.lib.solr_search import SolrSearch
 
-render = base.render
-abort = base.abort
-redirect = base.redirect
-
-NotFound = logic.NotFound
-NotAuthorized = logic.NotAuthorized
-get_action = logic.get_action
-check_access = logic.check_access
-_get_or_bust = logic.get_or_bust
+from ckan.plugins import toolkit
+import ckan.logic as logic
 
 
 @logic.side_effect_free
-def datastore_search(context, data_dict):
-    '''Search a DataStore resource.
-
+@toolkit.chained_action
+def datastore_search(prev_func, context, data_dict):
+    '''Overrides the default datastore search.
+    
     The datastore_search action allows you to search data in a resource.
     DataStore resources that belong to private CKAN resource can only be
     read by you if you have access to the CKAN resource and send the appropriate
@@ -55,21 +45,6 @@ def datastore_search(context, data_dict):
                  e.g.: "fieldname1, fieldname2 desc"
     :param count: If True, the result will include a 'total' field
                   to the total number of matching rows. (optional, default: True)
-    :type sort: string
-
-    Setting the ``plain`` flag to false enables the entire PostgreSQL `full text search query language`_.
-
-    A listing of all available resources can be found at the alias ``_table_metadata``.
-
-    .. _full text search query language: http://www.postgresql.org/docs/9.1/static/datatype-textsearch.html#DATATYPE-TSQUERY
-
-    If you need to download the full resource, read :ref:`dump`.
-
-    **Results:**
-
-    The result of this action is a dictionary with the following keys:
-
-    :rtype: A dictionary with the following keys
     :param fields: fields/columns and their extra metadata
     :type fields: list of dictionaries
     :param offset: query offset value
@@ -82,21 +57,21 @@ def datastore_search(context, data_dict):
     :type total: int
     :param records: list of matching results
     :type records: list of dictionaries
+    :param context: param data_dict:
+    :param data_dict: 
 
     '''
 
-    resource_id = data_dict.get('resource_id')
+    resource_id = data_dict.get(u'resource_id')
 
-    # If this isn't a datasolr resource (we've hijacked all datastore
-    # searches at this point, reroute request to the real datastore search endpoint
+    # If this isn't a datasolr resource (we've hijacked all datastore searches at this
+    # point), reroute request to the real datastore search endpoint
     if not is_datasolr_resource(resource_id):
         # Remove the indexed only flag
-        data_dict.pop("indexed_only", None)
+        data_dict.pop(u'indexed_only', None)
         # Pass request to the original datastore search
-        return ckan_datastore_search(context, data_dict)
+        return prev_func(context, data_dict)
 
     solr_search = SolrSearch(resource_id, context, data_dict)
     solr_search.validate()
     return solr_search.fetch()
-
-
